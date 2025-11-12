@@ -80,7 +80,7 @@ markdown_extensions:
       custom_checkbox: true
   - toc:                       # 目录配置
       permalink: true          # 启用标题链接
-  - extensions.milestone       # 自定义里程碑扩展
+  # - extensions.milestone       # 自定义里程碑扩展
 
 plugins:
   - search:                   # 默认搜索插件
