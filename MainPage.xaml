@@ -1,0 +1,240 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:clipboard.ViewModels"
+             xmlns:models="clr-namespace:clipboard.Models"
+             x:Class="clipboard.MainPage"
+             Shell.NavBarIsVisible="False">
+    
+    <ContentPage.Resources>
+        <Style x:Key="IconButtonStyle" TargetType="ImageButton">
+            <Setter Property="BackgroundColor" Value="Transparent"/>
+            <Setter Property="WidthRequest" Value="16"/>
+            <Setter Property="HeightRequest" Value="16"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Aspect" Value="AspectFit"/>
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="Transparent"/>
+                            </VisualState.Setters>
+                        </VisualState>
+                        <VisualState x:Name="PointerOver">
+                            <VisualState.Setters>
+                                <Setter Property="BackgroundColor" Value="#E0E0E0"/>
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+            <!-- 左侧分组列表 -->
+            <Border Grid.Column="0"
+                    BackgroundColor="#F5F5F5"
+                    StrokeThickness="0,0,1,0"
+                    Stroke="#E0E0E0">
+    <ScrollView>
+                    <VerticalStackLayout Padding="10">
+                        <Border BackgroundColor="White"
+                                StrokeThickness="1"
+                                Stroke="#E0E0E0"
+                                Padding="10,8"
+                                Margin="0,0,0,5">
+                            <Grid>
+                                <Label Text="全部"
+                                       FontSize="16"
+                                       VerticalOptions="Center"/>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnAllGroupTapped"/>
+                                </Border.GestureRecognizers>
+                            </Grid>
+                        </Border>
+
+                        <Grid Margin="0,10,0,5" x:DataType="viewmodels:ClipboardViewModel">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <Label Grid.Column="0"
+                                   Text="分组"
+                                   FontSize="14"
+                                   TextColor="#666"
+                                   VerticalOptions="Center"/>
+                            
+                            <ImageButton Grid.Column="2"
+                                         Style="{StaticResource IconButtonStyle}"
+                                         Command="{Binding CreateGroupCommand}"
+                                         VerticalOptions="Center"
+                                         HorizontalOptions="End"
+                                         ToolTipProperties.Text="新建分组">
+                                <ImageButton.Source>
+                                    <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE710;" Color="#512BD4" Size="16"/>
+                                </ImageButton.Source>
+                            </ImageButton>
+                        </Grid>
+
+                        <CollectionView ItemsSource="{Binding Groups}">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="models:ClipboardGroup">
+                                    <Border BackgroundColor="White"
+                                            StrokeThickness="1"
+                                            Stroke="#E0E0E0"
+                                            Padding="10,8"
+                                            Margin="0,0,0,5">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <Label Grid.Column="0"
+                                                   Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   VerticalOptions="Center"/>
+
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnGroupTapped" CommandParameter="{Binding .}"/>
+                                            </Border.GestureRecognizers>
+                                            
+                                            <Label Grid.Column="1"
+                                                   Text="{Binding ItemCount}"
+                                                   FontSize="12"
+                                                   TextColor="#999"
+                                                   VerticalOptions="Center"
+                                                   Margin="5,0,10,0"/>
+
+                                            <Button Grid.Column="2"
+                                                    Text="删除"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteGroupCommand}"
+                                                    CommandParameter="{Binding Id}"
+                                                    FontSize="11"
+                                                    Padding="8,4"
+                                                    BackgroundColor="Transparent"
+                                                    TextColor="#FF5722"
+                                                    BorderColor="#FF5722"
+                                                    BorderWidth="1"
+                                                    HeightRequest="28"
+                                                    VerticalOptions="Center"/>
+
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+            </Border>
+
+            <!-- 右侧剪贴板项目列表 -->
+            <ScrollView Grid.Column="1">
+                <CollectionView ItemsSource="{Binding Items}"
+                                EmptyView="暂无剪贴板历史记录">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:ClipboardItem">
+                            <Border BackgroundColor="White"
+                                    StrokeThickness="0,0,0,1"
+                                    Stroke="#E0E0E0"
+                                    Padding="15,12"
+                                    Margin="0,0,0,0">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 置顶标识 -->
+                                    <Label Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="📌 置顶"
+                                           FontSize="12"
+                                           TextColor="#512BD4"
+                                           IsVisible="{Binding IsPinned}"
+                                           Margin="0,0,0,5"/>
+
+                                    <!-- 内容 -->
+                                    <Label Grid.Row="1"
+                                           Grid.Column="0"
+                                           Grid.ColumnSpan="2"
+                                           Text="{Binding Content}"
+                                           FontSize="14"
+                                           LineBreakMode="WordWrap"
+                                           MaxLines="3"
+                                           TextColor="#333"/>
+
+                                    <!-- 时间和操作按钮 -->
+                                    <Label Grid.Row="2"
+                                           Grid.Column="0"
+                                           Text="{Binding LastUsedAt, StringFormat='{0:yyyy-MM-dd HH:mm}'}"
+                                           FontSize="11"
+                                           TextColor="#999"
+                                           Margin="0,8,0,0"/>
+
+                                    <HorizontalStackLayout Grid.Row="2"
+                                                           Grid.Column="1"
+                                                           Spacing="8"
+                                                           Margin="0,8,0,0">
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=CopyItemCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="复制">
+                                            <ImageButton.Source>
+                                                <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8C8;" Color="#512BD4" Size="16"/>
+                                            </ImageButton.Source>
+                                        </ImageButton>
+
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=PinItemCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}">
+                                            <ImageButton.Source>
+                                                <FontImageSource FontFamily="Segoe MDL2 Assets"
+                                                                  Glyph="{Binding IsPinned, Converter={StaticResource BoolToPinIconConverter}}"
+                                                                  Color="#512BD4"
+                                                                  Size="16"/>
+                                            </ImageButton.Source>
+                                        </ImageButton>
+
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=AddToGroupCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="分组">
+                                            <ImageButton.Source>
+                                                <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8D4;" Color="#512BD4" Size="16"/>
+                                            </ImageButton.Source>
+                                        </ImageButton>
+
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteItemCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="删除">
+                                            <ImageButton.Source>
+                                                <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE74D;" Color="#FF5722" Size="16"/>
+                                            </ImageButton.Source>
+                                        </ImageButton>
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </ScrollView>
+    </Grid>
+</ContentPage>

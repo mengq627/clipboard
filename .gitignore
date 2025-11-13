@@ -1,0 +1,6 @@
+# Visual Studio 用户设置目录
+.vs/
+
+# 编译输出目录
+bin/
+obj/
