@@ -202,12 +202,26 @@ public class HotkeyService : IDisposable
                 
                 if (isVisible)
                 {
-                    // 隐藏窗口
-                    Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_HIDE);
+                    // 窗口可见，检查是否有焦点
+                    var foregroundHwnd = Vanara.PInvoke.User32.GetForegroundWindow();
+                    var hasFocus = (foregroundHwnd == hwnd);
+                    
+                    if (hasFocus)
+                    {
+                        // 窗口可见且有焦点，隐藏窗口
+                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_HIDE);
+                    }
+                    else
+                    {
+                        // 窗口可见但失去焦点，重新聚焦到窗口
+                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+                        Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+                        platformWindow.Activate();
+                    }
                 }
                 else
                 {
-                    // 显示窗口
+                    // 窗口不可见，显示并聚焦
                     Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
                     Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
                     platformWindow.Activate();
