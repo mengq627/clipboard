@@ -19,6 +19,7 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">true</AllowUnsafeBlocks>
 
 		<!-- Display name -->
 		<ApplicationTitle>clipboard</ApplicationTitle>
@@ -67,6 +68,7 @@
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 		<FrameworkReference Include="Microsoft.WindowsDesktop.App" />
 		<PackageReference Include="Vanara.PInvoke.User32" Version="3.4.0" />
+		<PackageReference Include="Vanara.PInvoke.Gdi32" Version="3.4.0" />
 	</ItemGroup>
 
 </Project>

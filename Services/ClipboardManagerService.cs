@@ -262,6 +262,15 @@ public class ClipboardManagerService : IClipboardService
         }
     }
 
+    public async Task CopyToClipboardAsync(ClipboardItem item)
+    {
+        if (_platformService != null)
+        {
+            _ignoreNextChange = true;
+            await _platformService.CopyToClipboardAsync(item);
+        }
+    }
+
     public async Task<string> GetClipboardTextAsync()
     {
         if (_platformService != null)

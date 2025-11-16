@@ -18,6 +18,7 @@ public interface IClipboardService
     Task AddItemToGroupAsync(string itemId, string? groupId);
     Task RemoveGroupAsync(string groupId);
     Task CopyToClipboardAsync(string content);
+    Task CopyToClipboardAsync(ClipboardItem item);
     Task<string> GetClipboardTextAsync();
 }
 

@@ -185,7 +185,8 @@ public class ClipboardViewModel : BindableObject
             var item = Items.FirstOrDefault(i => i.Id == itemId);
             if (item != null)
             {
-                await _clipboardService.CopyToClipboardAsync(item.Content);
+                // 使用新的方法，传递完整的item信息以支持图片复制
+                await _clipboardService.CopyToClipboardAsync(item);
                 item.LastUsedAt = DateTime.Now;
                 await _clipboardService.UpdateItemAsync(item);
                 // 只更新项目列表，不刷新分组列表（因为复制操作不会影响分组）
@@ -204,14 +205,14 @@ public class ClipboardViewModel : BindableObject
         {
             // 获取要删除的项目，检查它是否属于某个分组
             var item = Items.FirstOrDefault(i => i.Id == itemId);
-            var hadGroup = item?.GroupId != null;
+            var groupId = item?.GroupId;
             
             await _clipboardService.RemoveItemAsync(itemId);
             
-            // 如果删除的项目属于某个分组，需要更新分组列表以刷新 ItemCount
-            if (hadGroup)
+            // 如果删除的项目属于某个分组，只更新该分组的 ItemCount
+            if (groupId != null)
             {
-                await UpdateGroupsAsync();
+                await UpdateGroupItemCountAsync(groupId);
             }
             
             // 更新项目列表
@@ -310,14 +311,20 @@ public class ClipboardViewModel : BindableObject
 
             if (selected != null && selected != "取消")
             {
-                var groupId = selected == "无分组" 
+                // 获取当前项目的分组信息
+                var item = Items.FirstOrDefault(i => i.Id == itemId);
+                var oldGroupId = item?.GroupId;
+                
+                var newGroupId = selected == "无分组" 
                     ? null 
                     : Groups.FirstOrDefault(g => g.Name == selected)?.Id;
                 
-                await _clipboardService.AddItemToGroupAsync(itemId, groupId);
+                await _clipboardService.AddItemToGroupAsync(itemId, newGroupId);
                 
-                // 更新分组列表以刷新 ItemCount
-                await UpdateGroupsAsync();
+                // 只更新受影响的分组的 ItemCount，不刷新整个分组列表
+                await UpdateGroupItemCountAsync(oldGroupId);
+                await UpdateGroupItemCountAsync(newGroupId);
+                
                 // 更新项目列表
                 await LoadItemsAsync();
             }
@@ -328,6 +335,9 @@ public class ClipboardViewModel : BindableObject
         }
     }
 
+    /// <summary>
+    /// 更新分组列表（仅在分组增加或删除时调用）
+    /// </summary>
     private async Task UpdateGroupsAsync()
     {
         try
@@ -335,32 +345,41 @@ public class ClipboardViewModel : BindableObject
             var groups = await _clipboardService.GetGroupsAsync();
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                // 更新分组列表，通过替换对象来触发 UI 更新
                 var existingGroupIds = Groups.Select(g => g.Id).ToHashSet();
                 var newGroupIds = groups.Select(g => g.Id).ToHashSet();
                 
-                // 移除不存在的分组
-                for (int i = Groups.Count - 1; i >= 0; i--)
+                // 检查是否有分组增加或删除
+                var hasGroupAdded = newGroupIds.Except(existingGroupIds).Any();
+                var hasGroupRemoved = existingGroupIds.Except(newGroupIds).Any();
+                
+                if (hasGroupAdded || hasGroupRemoved)
                 {
-                    if (!newGroupIds.Contains(Groups[i].Id))
+                    // 有分组增加或删除，刷新整个分组列表
+                    System.Diagnostics.Debug.WriteLine("Groups added or removed, refreshing entire group list");
+                    Groups.Clear();
+                    foreach (var group in groups)
                     {
-                        Groups.RemoveAt(i);
+                        Groups.Add(group);
+                    }
+                    
+                    // 如果选择了分组，更新SelectedGroup引用
+                    if (_selectedGroup != null)
+                    {
+                        _selectedGroup = Groups.FirstOrDefault(g => g.Id == _selectedGroup.Id);
                     }
                 }
-                
-                // 更新或添加分组
-                foreach (var group in groups)
+                else
                 {
-                    var existingIndex = Groups.ToList().FindIndex(g => g.Id == group.Id);
-                    if (existingIndex >= 0)
+                    // 没有分组增加或删除，只更新现有分组的 ItemCount
+                    System.Diagnostics.Debug.WriteLine("No groups added or removed, only updating ItemCount");
+                    foreach (var newGroup in groups)
                     {
-                        // 替换现有分组以触发 UI 更新（包括 ItemCount）
-                        Groups[existingIndex] = group;
-                    }
-                    else
-                    {
-                        // 添加新分组
-                        Groups.Add(group);
+                        var existingGroup = Groups.FirstOrDefault(g => g.Id == newGroup.Id);
+                        if (existingGroup != null)
+                        {
+                            // 只更新 Items 列表，这会触发 ItemCount 的 PropertyChanged
+                            existingGroup.Items = newGroup.Items;
+                        }
                     }
                 }
             });
@@ -370,14 +389,52 @@ public class ClipboardViewModel : BindableObject
             System.Diagnostics.Debug.WriteLine($"Error updating groups: {ex.Message}");
         }
     }
+    
+    /// <summary>
+    /// 只更新特定分组的 ItemCount（不刷新整个分组列表）
+    /// </summary>
+    private async Task UpdateGroupItemCountAsync(string? groupId)
+    {
+        if (groupId == null) return; // 无分组，不需要更新
+        
+        try
+        {
+            var groups = await _clipboardService.GetGroupsAsync();
+            var updatedGroup = groups.FirstOrDefault(g => g.Id == groupId);
+            
+            if (updatedGroup != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    var existingGroup = Groups.FirstOrDefault(g => g.Id == groupId);
+                    if (existingGroup != null)
+                    {
+                        // 只更新 Items 列表，这会触发 ItemCount 的 PropertyChanged
+                        existingGroup.Items = updatedGroup.Items;
+                        System.Diagnostics.Debug.WriteLine($"Updated ItemCount for group {groupId}: {existingGroup.ItemCount}");
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error updating group item count: {ex.Message}");
+        }
+    }
 
     private async Task RemoveFromGroupAsync(string itemId)
     {
         try
         {
+            // 获取当前项目的分组信息
+            var item = Items.FirstOrDefault(i => i.Id == itemId);
+            var oldGroupId = item?.GroupId;
+            
             await _clipboardService.AddItemToGroupAsync(itemId, null);
-            // 更新分组列表以刷新 ItemCount
-            await UpdateGroupsAsync();
+            
+            // 只更新受影响的分组的 ItemCount，不刷新整个分组列表
+            await UpdateGroupItemCountAsync(oldGroupId);
+            
             // 更新项目列表
             await LoadItemsAsync();
         }

@@ -17,6 +17,8 @@
             <converters:BoolToPinButtonStyleConverter x:Key="BoolToPinButtonStyleConverter" />
             <converters:BoolToPinBorderStyleConverter x:Key="BoolToPinBorderStyleConverter" />
             <converters:DateTimeFormatConverter x:Key="DateTimeFormatConverter" />
+            <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter" />
+            <converters:ContentTypeToVisibilityConverter x:Key="ContentTypeToVisibilityConverter" />
             
             <!-- 图标按钮样式 - ImageButton 背景始终透明，由 Border 负责显示背景 -->
             <Style x:Key="IconButtonStyle" TargetType="ImageButton">
