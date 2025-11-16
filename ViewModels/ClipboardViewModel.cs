@@ -188,7 +188,8 @@ public class ClipboardViewModel : BindableObject
                 await _clipboardService.CopyToClipboardAsync(item.Content);
                 item.LastUsedAt = DateTime.Now;
                 await _clipboardService.UpdateItemAsync(item);
-                await LoadDataAsync();
+                // 只更新项目列表，不刷新分组列表（因为复制操作不会影响分组）
+                await LoadItemsAsync();
             }
         }
         catch (Exception ex)
@@ -201,8 +202,20 @@ public class ClipboardViewModel : BindableObject
     {
         try
         {
+            // 获取要删除的项目，检查它是否属于某个分组
+            var item = Items.FirstOrDefault(i => i.Id == itemId);
+            var hadGroup = item?.GroupId != null;
+            
             await _clipboardService.RemoveItemAsync(itemId);
-            await LoadDataAsync();
+            
+            // 如果删除的项目属于某个分组，需要更新分组列表以刷新 ItemCount
+            if (hadGroup)
+            {
+                await UpdateGroupsAsync();
+            }
+            
+            // 更新项目列表
+            await LoadItemsAsync();
         }
         catch (Exception ex)
         {
