@@ -48,13 +48,18 @@
                                    TextColor="#666"
                                    VerticalOptions="Center"/>
                             
-                            <ImageButton Grid.Column="2"
-                                         Style="{StaticResource IconButtonStyle}"
-                                         Source="add_group_icon.png"
-                                         Command="{Binding CreateGroupCommand}"
-                                         VerticalOptions="Center"
-                                         HorizontalOptions="End"
-                                         ToolTipProperties.Text="新建分组"/>
+                            <Border Grid.Column="2"
+                                    Style="{StaticResource IconButtonBorderStyle}"
+                                    WidthRequest="25"
+                                    HeightRequest="25"
+                                    VerticalOptions="Center"
+                                    HorizontalOptions="End">
+                                <ImageButton Style="{StaticResource IconButtonStyle}"
+                                             Source="add_group_icon.png"
+                                             BackgroundColor="Transparent"
+                                             Command="{Binding CreateGroupCommand}"
+                                             ToolTipProperties.Text="新建分组"/>
+                            </Border>
                         </Grid>
 
                         <CollectionView ItemsSource="{Binding Groups}">
@@ -88,13 +93,18 @@
                                                    VerticalOptions="Center"
                                                    Margin="5,0,10,0"/>
 
-                                            <ImageButton Grid.Column="2"
-                                                         Style="{StaticResource IconButtonStyle}"
-                                                         Source="delete_icon.png"
-                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteGroupCommand}"
-                                                         CommandParameter="{Binding Id}"
-                                                         VerticalOptions="Center"
-                                                         ToolTipProperties.Text="删除"/>
+                                            <Border Grid.Column="2"
+                                                    Style="{StaticResource IconButtonBorderStyle}"
+                                                    WidthRequest="25"
+                                                    HeightRequest="25"
+                                                    VerticalOptions="Center">
+                                                <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                             Source="delete_icon.png"
+                                                             BackgroundColor="Transparent"
+                                                             Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteGroupCommand}"
+                                                             CommandParameter="{Binding Id}"
+                                                             ToolTipProperties.Text="删除"/>
+                                            </Border>
 
                                         </Grid>
                                     </Border>
@@ -162,29 +172,49 @@
                                                            Spacing="4"
                                                            VerticalOptions="Center"
                                                            HorizontalOptions="End">
-                                        <ImageButton Style="{StaticResource IconButtonStyle}"
-                                                     Source="copy_icon.png"
-                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=CopyItemCommand}"
-                                                     CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="复制"/>
+                                        <Border Style="{StaticResource IconButtonBorderStyle}"
+                                                WidthRequest="25"
+                                                HeightRequest="25">
+                                            <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                         Source="copy_icon.png"
+                                                         BackgroundColor="Transparent"
+                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=CopyItemCommand}"
+                                                         CommandParameter="{Binding Id}"
+                                                         ToolTipProperties.Text="复制"/>
+                                        </Border>
 
-                                        <ImageButton Style="{Binding IsPinned, Converter={StaticResource BoolToPinButtonStyleConverter}}"
-                                                     Source="{Binding IsPinned, Converter={StaticResource BoolToPinImageSourceConverter}}"
-                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=PinItemCommand}"
-                                                     CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}"/>
+                                        <Border Style="{Binding IsPinned, Converter={StaticResource BoolToPinBorderStyleConverter}}"
+                                                WidthRequest="25"
+                                                HeightRequest="25">
+                                            <ImageButton Style="{Binding IsPinned, Converter={StaticResource BoolToPinButtonStyleConverter}}"
+                                                         Source="{Binding IsPinned, Converter={StaticResource BoolToPinImageSourceConverter}}"
+                                                         BackgroundColor="Transparent"
+                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=PinItemCommand}"
+                                                         CommandParameter="{Binding Id}"
+                                                         ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}"/>
+                                        </Border>
 
-                                        <ImageButton Style="{StaticResource IconButtonStyle}"
-                                                     Source="group_icon.png"
-                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=AddToGroupCommand}"
-                                                     CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="分组"/>
+                                        <Border Style="{StaticResource IconButtonBorderStyle}"
+                                                WidthRequest="25"
+                                                HeightRequest="25">
+                                            <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                         Source="group_icon.png"
+                                                         BackgroundColor="Transparent"
+                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=AddToGroupCommand}"
+                                                         CommandParameter="{Binding Id}"
+                                                         ToolTipProperties.Text="分组"/>
+                                        </Border>
 
-                                        <ImageButton Style="{StaticResource IconButtonStyle}"
-                                                     Source="delete_icon.png"
-                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteItemCommand}"
-                                                     CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="删除"/>
+                                        <Border Style="{StaticResource IconButtonBorderStyle}"
+                                                WidthRequest="25"
+                                                HeightRequest="25">
+                                            <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                         Source="delete_icon.png"
+                                                         BackgroundColor="Transparent"
+                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteItemCommand}"
+                                                         CommandParameter="{Binding Id}"
+                                                         ToolTipProperties.Text="删除"/>
+                                        </Border>
                                     </HorizontalStackLayout>
                                 </Grid>
                             </Border>

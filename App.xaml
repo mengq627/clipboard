@@ -15,9 +15,10 @@
             <converters:BoolToPinIconConverter x:Key="BoolToPinIconConverter" />
             <converters:BoolToPinImageSourceConverter x:Key="BoolToPinImageSourceConverter" />
             <converters:BoolToPinButtonStyleConverter x:Key="BoolToPinButtonStyleConverter" />
+            <converters:BoolToPinBorderStyleConverter x:Key="BoolToPinBorderStyleConverter" />
             <converters:DateTimeFormatConverter x:Key="DateTimeFormatConverter" />
             
-            <!-- 图标按钮样式 -->
+            <!-- 图标按钮样式 - ImageButton 背景始终透明，由 Border 负责显示背景 -->
             <Style x:Key="IconButtonStyle" TargetType="ImageButton">
                 <Setter Property="BackgroundColor" Value="Transparent"/>
                 <Setter Property="WidthRequest" Value="25"/>
@@ -26,6 +27,24 @@
                 <Setter Property="MinimumHeightRequest" Value="0"/>
                 <Setter Property="Padding" Value="4"/>
                 <Setter Property="Aspect" Value="AspectFit"/>
+            </Style>
+            <Style x:Key="PinnedIconButtonStyle" TargetType="ImageButton">
+                <Setter Property="BackgroundColor" Value="Transparent"/>
+                <Setter Property="WidthRequest" Value="25"/>
+                <Setter Property="HeightRequest" Value="25"/>
+                <Setter Property="MinimumWidthRequest" Value="0"/>
+                <Setter Property="MinimumHeightRequest" Value="0"/>
+                <Setter Property="Padding" Value="4"/>
+                <Setter Property="Aspect" Value="AspectFit"/>
+            </Style>
+            
+            <!-- 带圆角的边框样式，用于包裹按钮 -->
+            <Style x:Key="IconButtonBorderStyle" TargetType="Border">
+                <Setter Property="StrokeThickness" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="StrokeShape">
+                    <RoundRectangle CornerRadius="4"/>
+                </Setter>
                 <Setter Property="VisualStateManager.VisualStateGroups">
                     <VisualStateGroupList>
                         <VisualStateGroup x:Name="CommonStates">
@@ -43,14 +62,12 @@
                     </VisualStateGroupList>
                 </Setter>
             </Style>
-            <Style x:Key="PinnedIconButtonStyle" TargetType="ImageButton">
-                <Setter Property="BackgroundColor" Value="#E3D5F5"/>
-                <Setter Property="WidthRequest" Value="25"/>
-                <Setter Property="HeightRequest" Value="25"/>
-                <Setter Property="MinimumWidthRequest" Value="0"/>
-                <Setter Property="MinimumHeightRequest" Value="0"/>
-                <Setter Property="Padding" Value="4"/>
-                <Setter Property="Aspect" Value="AspectFit"/>
+            <Style x:Key="PinnedIconButtonBorderStyle" TargetType="Border">
+                <Setter Property="StrokeThickness" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="StrokeShape">
+                    <RoundRectangle CornerRadius="4"/>
+                </Setter>
                 <Setter Property="VisualStateManager.VisualStateGroups">
                     <VisualStateGroupList>
                         <VisualStateGroup x:Name="CommonStates">
