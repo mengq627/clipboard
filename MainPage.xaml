@@ -128,7 +128,6 @@
                                     Margin="0,0,0,0">
                                 <Grid>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
@@ -137,17 +136,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- 置顶标识 -->
-                                    <Label Grid.Row="0"
-                                           Grid.Column="0"
-                                           Text="📌 置顶"
-                                           FontSize="12"
-                                           TextColor="#512BD4"
-                                           IsVisible="{Binding IsPinned}"
-                                           Margin="0,0,0,5"/>
-
                                     <!-- 内容 - 中间偏上 -->
-                                    <Label Grid.Row="1"
+                                    <Label Grid.Row="0"
                                            Grid.Column="0"
                                            Grid.ColumnSpan="2"
                                            Text="{Binding Content}"
@@ -159,7 +149,7 @@
                                            Margin="0,5,0,8"/>
 
                                     <!-- 时间和操作按钮 - 同一行，偏下 -->
-                                    <Label Grid.Row="2"
+                                    <Label Grid.Row="1"
                                            Grid.Column="0"
                                            Text="{Binding LastUsedAt, Converter={StaticResource DateTimeFormatConverter}}"
                                            FontSize="11"
@@ -167,7 +157,7 @@
                                            VerticalOptions="Center"
                                            HorizontalOptions="Start"/>
 
-                                    <HorizontalStackLayout Grid.Row="2"
+                                    <HorizontalStackLayout Grid.Row="1"
                                                            Grid.Column="1"
                                                            Spacing="4"
                                                            VerticalOptions="Center"

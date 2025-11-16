@@ -1,13 +1,81 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace clipboard.Models;
 
-public class ClipboardItem
+public class ClipboardItem : INotifyPropertyChanged
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Content { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime LastUsedAt { get; set; } = DateTime.Now;
-    public bool IsPinned { get; set; }
-    public string? GroupId { get; set; }
-    public string ContentType { get; set; } = "Text"; // Text, Image, etc.
+    private string _id = Guid.NewGuid().ToString();
+    private string _content = string.Empty;
+    private DateTime _createdAt = DateTime.Now;
+    private DateTime _lastUsedAt = DateTime.Now;
+    private bool _isPinned;
+    private string? _groupId;
+    private string _contentType = "Text";
+
+    public string Id
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+
+    public string Content
+    {
+        get => _content;
+        set => SetProperty(ref _content, value);
+    }
+
+    public DateTime CreatedAt
+    {
+        get => _createdAt;
+        set => SetProperty(ref _createdAt, value);
+    }
+
+    public DateTime LastUsedAt
+    {
+        get => _lastUsedAt;
+        set => SetProperty(ref _lastUsedAt, value);
+    }
+
+    public bool IsPinned
+    {
+        get => _isPinned;
+        set
+        {
+            if (SetProperty(ref _isPinned, value))
+            {
+                System.Diagnostics.Debug.WriteLine($"IsPinned changed for item {Id}: {value}");
+            }
+        }
+    }
+
+    public string? GroupId
+    {
+        get => _groupId;
+        set => SetProperty(ref _groupId, value);
+    }
+
+    public string ContentType
+    {
+        get => _contentType;
+        set => SetProperty(ref _contentType, value);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(backingStore, value))
+            return false;
+
+        backingStore = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
 }
 

@@ -119,6 +119,8 @@ public class ClipboardViewModel : BindableObject
         var filteredItems = items.Where(item => 
             _selectedGroup == null || item.GroupId == _selectedGroup.Id).ToList();
         
+        System.Diagnostics.Debug.WriteLine($"LoadItemsInternal: Current items count={Items.Count}, Filtered items count={filteredItems.Count}");
+        
         // 检查是否需要更新（避免不必要的刷新）
         if (Items.Count == filteredItems.Count)
         {
@@ -127,29 +129,52 @@ public class ClipboardViewModel : BindableObject
             
             if (currentIds.SequenceEqual(newIds))
             {
-                // ID相同，只更新现有项目的属性，避免整个列表刷新
-                foreach (var newItem in filteredItems)
+                // ID相同，检查顺序是否相同
+                var currentOrder = Items.Select(i => i.Id).ToList();
+                var newOrder = filteredItems.Select(i => i.Id).ToList();
+                
+                if (currentOrder.SequenceEqual(newOrder))
                 {
-                    var existingItem = Items.FirstOrDefault(i => i.Id == newItem.Id);
-                    if (existingItem != null)
+                    // 顺序也相同，只更新现有项目的属性，避免整个列表刷新
+                    System.Diagnostics.Debug.WriteLine("LoadItemsInternal: Only updating properties, no list refresh");
+                    foreach (var newItem in filteredItems)
                     {
-                        // 更新属性
-                        existingItem.Content = newItem.Content;
-                        existingItem.IsPinned = newItem.IsPinned;
-                        existingItem.LastUsedAt = newItem.LastUsedAt;
-                        existingItem.GroupId = newItem.GroupId;
-                        existingItem.ContentType = newItem.ContentType;
+                        var existingItem = Items.FirstOrDefault(i => i.Id == newItem.Id);
+                        if (existingItem != null)
+                        {
+                            // 更新属性（会触发 PropertyChanged 事件）
+                            existingItem.Content = newItem.Content;
+                            existingItem.IsPinned = newItem.IsPinned;
+                            existingItem.LastUsedAt = newItem.LastUsedAt;
+                            existingItem.GroupId = newItem.GroupId;
+                            existingItem.ContentType = newItem.ContentType;
+                            System.Diagnostics.Debug.WriteLine($"Updated item {existingItem.Id}: IsPinned={existingItem.IsPinned}");
+                        }
                     }
+                    return;
                 }
-                return;
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("LoadItemsInternal: Order changed, refreshing list");
+                }
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("LoadItemsInternal: IDs changed, refreshing list");
+            }
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine("LoadItemsInternal: Count changed, refreshing list");
         }
         
         // 需要完全刷新
+        System.Diagnostics.Debug.WriteLine("LoadItemsInternal: Performing full list refresh");
         Items.Clear();
         foreach (var item in filteredItems)
         {
             Items.Add(item);
+            System.Diagnostics.Debug.WriteLine($"Added item {item.Id}: IsPinned={item.IsPinned}");
         }
     }
 
@@ -192,9 +217,32 @@ public class ClipboardViewModel : BindableObject
             var item = Items.FirstOrDefault(i => i.Id == itemId);
             if (item != null)
             {
-                await _clipboardService.PinItemAsync(itemId, !item.IsPinned);
-                // 只更新项目列表，不更新分组列表，避免分组栏刷新
-                await LoadItemsAsync();
+                var wasPinned = item.IsPinned;
+                var willBePinned = !wasPinned;
+                var isFirstItem = Items.IndexOf(item) == 0;
+                
+                System.Diagnostics.Debug.WriteLine($"PinItemAsync: itemId={itemId}, wasPinned={wasPinned}, willBePinned={willBePinned}, isFirstItem={isFirstItem}");
+                
+                // 更新服务中的置顶状态
+                await _clipboardService.PinItemAsync(itemId, willBePinned);
+                
+                // 如果置顶的是最上方的项目，只更新属性，不刷新列表
+                if (isFirstItem && willBePinned)
+                {
+                    // 只更新置顶状态，不刷新列表
+                    System.Diagnostics.Debug.WriteLine($"Updating IsPinned property directly for first item");
+                    item.IsPinned = willBePinned;
+                }
+                else
+                {
+                    // 如果置顶的不是最上方的项目，或者取消置顶，需要重新排序
+                    System.Diagnostics.Debug.WriteLine($"Reloading items list for reordering");
+                    await LoadItemsAsync();
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"PinItemAsync: Item not found with id={itemId}");
             }
         }
         catch (Exception ex)
