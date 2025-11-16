@@ -6,31 +6,6 @@
              x:Class="clipboard.MainPage"
              Shell.NavBarIsVisible="False">
     
-    <ContentPage.Resources>
-        <Style x:Key="IconButtonStyle" TargetType="ImageButton">
-            <Setter Property="BackgroundColor" Value="Transparent"/>
-            <Setter Property="WidthRequest" Value="16"/>
-            <Setter Property="HeightRequest" Value="16"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Aspect" Value="AspectFit"/>
-            <Setter Property="VisualStateManager.VisualStateGroups">
-                <VisualStateGroupList>
-                    <VisualStateGroup x:Name="CommonStates">
-                        <VisualState x:Name="Normal">
-                            <VisualState.Setters>
-                                <Setter Property="BackgroundColor" Value="Transparent"/>
-                            </VisualState.Setters>
-                        </VisualState>
-                        <VisualState x:Name="PointerOver">
-                            <VisualState.Setters>
-                                <Setter Property="BackgroundColor" Value="#E0E0E0"/>
-                            </VisualState.Setters>
-                        </VisualState>
-                    </VisualStateGroup>
-                </VisualStateGroupList>
-            </Setter>
-        </Style>
-    </ContentPage.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -75,14 +50,11 @@
                             
                             <ImageButton Grid.Column="2"
                                          Style="{StaticResource IconButtonStyle}"
+                                         Source="add_group_icon.png"
                                          Command="{Binding CreateGroupCommand}"
                                          VerticalOptions="Center"
                                          HorizontalOptions="End"
-                                         ToolTipProperties.Text="新建分组">
-                                <ImageButton.Source>
-                                    <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE710;" Color="#512BD4" Size="16"/>
-                                </ImageButton.Source>
-                            </ImageButton>
+                                         ToolTipProperties.Text="新建分组"/>
                         </Grid>
 
                         <CollectionView ItemsSource="{Binding Groups}">
@@ -116,18 +88,13 @@
                                                    VerticalOptions="Center"
                                                    Margin="5,0,10,0"/>
 
-                                            <Button Grid.Column="2"
-                                                    Text="删除"
-                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteGroupCommand}"
-                                                    CommandParameter="{Binding Id}"
-                                                    FontSize="11"
-                                                    Padding="8,4"
-                                                    BackgroundColor="Transparent"
-                                                    TextColor="#FF5722"
-                                                    BorderColor="#FF5722"
-                                                    BorderWidth="1"
-                                                    HeightRequest="28"
-                                                    VerticalOptions="Center"/>
+                                            <ImageButton Grid.Column="2"
+                                                         Style="{StaticResource IconButtonStyle}"
+                                                         Source="delete_icon.png"
+                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteGroupCommand}"
+                                                         CommandParameter="{Binding Id}"
+                                                         VerticalOptions="Center"
+                                                         ToolTipProperties.Text="删除"/>
 
                                         </Grid>
                                     </Border>
@@ -152,7 +119,7 @@
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
@@ -169,7 +136,7 @@
                                            IsVisible="{Binding IsPinned}"
                                            Margin="0,0,0,5"/>
 
-                                    <!-- 内容 -->
+                                    <!-- 内容 - 中间偏上 -->
                                     <Label Grid.Row="1"
                                            Grid.Column="0"
                                            Grid.ColumnSpan="2"
@@ -177,58 +144,47 @@
                                            FontSize="14"
                                            LineBreakMode="WordWrap"
                                            MaxLines="3"
-                                           TextColor="#333"/>
+                                           TextColor="#333"
+                                           VerticalOptions="Start"
+                                           Margin="0,5,0,8"/>
 
-                                    <!-- 时间和操作按钮 -->
+                                    <!-- 时间和操作按钮 - 同一行，偏下 -->
                                     <Label Grid.Row="2"
                                            Grid.Column="0"
-                                           Text="{Binding LastUsedAt, StringFormat='{0:yyyy-MM-dd HH:mm}'}"
+                                           Text="{Binding LastUsedAt, Converter={StaticResource DateTimeFormatConverter}}"
                                            FontSize="11"
                                            TextColor="#999"
-                                           Margin="0,8,0,0"/>
+                                           VerticalOptions="Center"
+                                           HorizontalOptions="Start"/>
 
                                     <HorizontalStackLayout Grid.Row="2"
                                                            Grid.Column="1"
-                                                           Spacing="8"
-                                                           Margin="0,8,0,0">
+                                                           Spacing="4"
+                                                           VerticalOptions="Center"
+                                                           HorizontalOptions="End">
                                         <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Source="copy_icon.png"
                                                      Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=CopyItemCommand}"
                                                      CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="复制">
-                                            <ImageButton.Source>
-                                                <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8C8;" Color="#512BD4" Size="16"/>
-                                            </ImageButton.Source>
-                                        </ImageButton>
+                                                     ToolTipProperties.Text="复制"/>
 
-                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                        <ImageButton Style="{Binding IsPinned, Converter={StaticResource BoolToPinButtonStyleConverter}}"
+                                                     Source="{Binding IsPinned, Converter={StaticResource BoolToPinImageSourceConverter}}"
                                                      Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=PinItemCommand}"
                                                      CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}">
-                                            <ImageButton.Source>
-                                                <FontImageSource FontFamily="Segoe MDL2 Assets"
-                                                                  Glyph="{Binding IsPinned, Converter={StaticResource BoolToPinIconConverter}}"
-                                                                  Color="#512BD4"
-                                                                  Size="16"/>
-                                            </ImageButton.Source>
-                                        </ImageButton>
+                                                     ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}"/>
 
                                         <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Source="group_icon.png"
                                                      Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=AddToGroupCommand}"
                                                      CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="分组">
-                                            <ImageButton.Source>
-                                                <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8D4;" Color="#512BD4" Size="16"/>
-                                            </ImageButton.Source>
-                                        </ImageButton>
+                                                     ToolTipProperties.Text="分组"/>
 
                                         <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Source="delete_icon.png"
                                                      Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteItemCommand}"
                                                      CommandParameter="{Binding Id}"
-                                                     ToolTipProperties.Text="删除">
-                                            <ImageButton.Source>
-                                                <FontImageSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE74D;" Color="#FF5722" Size="16"/>
-                                            </ImageButton.Source>
-                                        </ImageButton>
+                                                     ToolTipProperties.Text="删除"/>
                                     </HorizontalStackLayout>
                                 </Grid>
                             </Border>

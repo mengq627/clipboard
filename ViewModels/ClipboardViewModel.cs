@@ -115,16 +115,41 @@ public class ClipboardViewModel : BindableObject
 
     private void LoadItemsInternal(List<ClipboardItem> items)
     {
-        // 更新项目列表
-        Items.Clear();
-        foreach (var item in items)
+        // 过滤项目（根据选择的分组）
+        var filteredItems = items.Where(item => 
+            _selectedGroup == null || item.GroupId == _selectedGroup.Id).ToList();
+        
+        // 检查是否需要更新（避免不必要的刷新）
+        if (Items.Count == filteredItems.Count)
         {
-            // 如果没有选择分组，显示所有项目
-            // 如果选择了分组，只显示该分组的项目
-            if (_selectedGroup == null || item.GroupId == _selectedGroup.Id)
+            var currentIds = Items.Select(i => i.Id).OrderBy(id => id).ToList();
+            var newIds = filteredItems.Select(i => i.Id).OrderBy(id => id).ToList();
+            
+            if (currentIds.SequenceEqual(newIds))
             {
-                Items.Add(item);
+                // ID相同，只更新现有项目的属性，避免整个列表刷新
+                foreach (var newItem in filteredItems)
+                {
+                    var existingItem = Items.FirstOrDefault(i => i.Id == newItem.Id);
+                    if (existingItem != null)
+                    {
+                        // 更新属性
+                        existingItem.Content = newItem.Content;
+                        existingItem.IsPinned = newItem.IsPinned;
+                        existingItem.LastUsedAt = newItem.LastUsedAt;
+                        existingItem.GroupId = newItem.GroupId;
+                        existingItem.ContentType = newItem.ContentType;
+                    }
+                }
+                return;
             }
+        }
+        
+        // 需要完全刷新
+        Items.Clear();
+        foreach (var item in filteredItems)
+        {
+            Items.Add(item);
         }
     }
 
@@ -168,7 +193,8 @@ public class ClipboardViewModel : BindableObject
             if (item != null)
             {
                 await _clipboardService.PinItemAsync(itemId, !item.IsPinned);
-                await LoadDataAsync();
+                // 只更新项目列表，不更新分组列表，避免分组栏刷新
+                await LoadItemsAsync();
             }
         }
         catch (Exception ex)

@@ -260,3 +260,7 @@ Windows特定的功能在 `Platforms/Windows/` 目录下：
 2. **数据持久化**: 数据保存在本地JSON文件，应用关闭后数据不会丢失
 3. **窗口位置**: 窗口位置会自动保存和恢复
 4. **系统托盘**: 应用关闭时会隐藏到托盘，需要从托盘菜单退出
+
+## 参考文档
+
+.NET MAUI  https://learn.microsoft.com/zh-cn/dotnet/maui/user-interface/keyboard-accelerators?view=net-maui-9.0

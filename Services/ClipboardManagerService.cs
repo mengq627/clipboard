@@ -11,6 +11,7 @@ public class ClipboardManagerService : IClipboardService
     private readonly string _dataFilePath;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private IClipboardService? _platformService;
+    private bool _ignoreNextChange = false;
 
     public event EventHandler<ClipboardItem>? ClipboardChanged;
 
@@ -36,6 +37,11 @@ public class ClipboardManagerService : IClipboardService
 
     private async void OnPlatformClipboardChanged(object? sender, ClipboardItem item)
     {
+        if (_ignoreNextChange)
+        {
+            _ignoreNextChange = false;
+            return;
+        }
         await HandleNewClipboardItem(item);
     }
 
@@ -251,6 +257,7 @@ public class ClipboardManagerService : IClipboardService
     {
         if (_platformService != null)
         {
+            _ignoreNextChange = true;
             await _platformService.CopyToClipboardAsync(content);
         }
     }
@@ -298,7 +305,8 @@ public class ClipboardManagerService : IClipboardService
             };
             var json = JsonSerializer.Serialize(data, new JsonSerializerOptions 
             { 
-                WriteIndented = true 
+                WriteIndented = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
             File.WriteAllText(_dataFilePath, json);
         }

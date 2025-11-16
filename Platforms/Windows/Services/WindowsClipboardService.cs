@@ -47,23 +47,50 @@ public class WindowsClipboardService : IClipboardService
 
                     try
                     {
+                        // 检查文本内容
                         var currentContent = await GetClipboardTextAsync();
+                        var hasText = !string.IsNullOrEmpty(currentContent);
                         
-                        // 检查内容是否变化（包括从空到有内容的情况）
-                        if (currentContent != _lastClipboardContent)
+                        string contentType = "Text";
+                        string content = currentContent;
+                        
+                        // 检查图片内容（使用Windows API）
+                        var hasImage = await CheckClipboardHasImageAsync();
+                        
+                        // 优先处理图片
+                        if (hasImage)
+                        {
+                            try
+                            {
+                                var imageBytes = await GetClipboardImageAsync();
+                                if (imageBytes != null && imageBytes.Length > 0)
+                                {
+                                    contentType = "Image";
+                                    content = Convert.ToBase64String(imageBytes);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error getting image from clipboard: {ex.Message}");
+                            }
+                        }
+                        
+                        // 检查内容是否变化
+                        var contentKey = contentType == "Image" ? $"IMAGE:{content.Substring(0, Math.Min(50, content.Length))}" : content;
+                        if (contentKey != _lastClipboardContent)
                         {
                             // 只有当新内容不为空时才触发事件
-                            if (!string.IsNullOrEmpty(currentContent))
+                            if ((hasText && !string.IsNullOrEmpty(content)) || (hasImage && contentType == "Image"))
                             {
-                                System.Diagnostics.Debug.WriteLine($"Clipboard content changed: '{currentContent.Substring(0, Math.Min(50, currentContent.Length))}...'");
-                                _lastClipboardContent = currentContent;
+                                System.Diagnostics.Debug.WriteLine($"Clipboard content changed: Type={contentType}, Length={content.Length}");
+                                _lastClipboardContent = contentKey;
                                 
                                 var item = new ClipboardItem
                                 {
-                                    Content = currentContent,
+                                    Content = content,
                                     CreatedAt = DateTime.Now,
                                     LastUsedAt = DateTime.Now,
-                                    ContentType = "Text"
+                                    ContentType = contentType
                                 };
 
                                 // 在主线程上触发事件
@@ -75,7 +102,7 @@ public class WindowsClipboardService : IClipboardService
                             else
                             {
                                 // 如果内容变为空，也更新_lastClipboardContent，但不触发事件
-                                _lastClipboardContent = currentContent;
+                                _lastClipboardContent = contentKey;
                             }
                         }
                     }
@@ -217,6 +244,107 @@ public class WindowsClipboardService : IClipboardService
             System.Diagnostics.Debug.WriteLine($"Error getting clipboard text: {ex.Message}");
             return string.Empty;
         }
+    }
+    
+    private Task<bool> CheckClipboardHasImageAsync()
+    {
+        return MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            try
+            {
+                // 使用Windows API检查剪贴板是否有图片
+                // 剪贴板格式常量
+                const uint CF_DIB = 8;
+                const uint CF_DIBV5 = 17;
+                const uint CF_BITMAP = 2;
+                
+                if (!Vanara.PInvoke.User32.OpenClipboard(IntPtr.Zero))
+                    return false;
+                
+                try
+                {
+                    // 检查是否有DIB (Device Independent Bitmap) 格式
+                    var hasDib = Vanara.PInvoke.User32.IsClipboardFormatAvailable(CF_DIB);
+                    // 检查是否有DIBV5格式
+                    var hasDibV5 = Vanara.PInvoke.User32.IsClipboardFormatAvailable(CF_DIBV5);
+                    // 检查是否有位图格式
+                    var hasBitmap = Vanara.PInvoke.User32.IsClipboardFormatAvailable(CF_BITMAP);
+                    
+                    return hasDib || hasDibV5 || hasBitmap;
+                }
+                finally
+                {
+                    Vanara.PInvoke.User32.CloseClipboard();
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        });
+    }
+    
+    private Task<byte[]?> GetClipboardImageAsync()
+    {
+        return MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            try
+            {
+                // 剪贴板格式常量
+                const uint CF_DIB = 8;
+                const uint CF_DIBV5 = 17;
+                
+                if (!Vanara.PInvoke.User32.OpenClipboard(IntPtr.Zero))
+                    return null;
+                
+                try
+                {
+                    // 尝试获取DIB格式的图片数据
+                    var hMem = Vanara.PInvoke.User32.GetClipboardData(CF_DIB);
+                    if (hMem == IntPtr.Zero)
+                    {
+                        // 尝试DIBV5格式
+                        hMem = Vanara.PInvoke.User32.GetClipboardData(CF_DIBV5);
+                    }
+                    
+                    if (hMem == IntPtr.Zero)
+                        return null;
+                    
+                    var ptr = Vanara.PInvoke.Kernel32.GlobalLock(hMem);
+                    if (ptr == IntPtr.Zero)
+                        return null;
+                    
+                    try
+                    {
+                        // 获取数据大小
+                        var size = Vanara.PInvoke.Kernel32.GlobalSize(hMem);
+                        if (size == 0)
+                            return null;
+                        
+                        // 复制数据
+                        var buffer = new byte[size];
+                        Marshal.Copy(ptr, buffer, 0, (int)size);
+                        
+                        // 将DIB转换为PNG格式（简化处理，直接返回DIB数据）
+                        // 注意：实际应用中可能需要将DIB转换为更通用的格式如PNG
+                        return buffer;
+                    }
+                    finally
+                    {
+                        Vanara.PInvoke.Kernel32.GlobalUnlock(hMem);
+                    }
+                }
+                finally
+                {
+                    Vanara.PInvoke.User32.CloseClipboard();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting clipboard image: {ex.Message}");
+                return null;
+            }
+        });
     }
 }
 #endif

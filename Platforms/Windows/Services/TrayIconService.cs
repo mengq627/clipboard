@@ -74,6 +74,8 @@ public class TrayIconService : IDisposable
             if (platformWindow != null)
             {
                 var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
+                // 确保任务栏图标隐藏
+                HideTaskbarIcon(hwnd);
                 // 使用Windows API显示窗口
                 Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
                 Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
@@ -120,7 +122,7 @@ public class TrayIconService : IDisposable
         }
     }
 
-    private void HideTaskbarIcon(IntPtr hwnd)
+    public void HideTaskbarIcon(IntPtr hwnd)
     {
         // 使用Windows API隐藏任务栏图标
         const int GWL_EXSTYLE = -20;
