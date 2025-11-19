@@ -24,7 +24,11 @@ namespace clipboard
 #endif
 
             // 注册服务
+            var settingsService = new AppSettingsService();
+            builder.Services.AddSingleton<AppSettingsService>(settingsService);
+            
             var clipboardManager = new ClipboardManagerService();
+            clipboardManager.SetSettingsService(settingsService);
             builder.Services.AddSingleton<IClipboardService>(clipboardManager);
 
 #if WINDOWS

@@ -11,6 +11,15 @@ namespace clipboard
         private TrayIconService? _trayIconService;
         private WindowPositionService? _windowPositionService;
         private HotkeyService? _hotkeyService;
+        private Services.AppSettingsService? _settingsService;
+        
+        /// <summary>
+        /// 更新快捷键配置（供SettingsViewModel调用）
+        /// </summary>
+        public void UpdateHotkeyConfig(bool useWinKey, bool useAltKey, char key)
+        {
+            _hotkeyService?.UpdateHotkeyConfig(useWinKey, useAltKey, key);
+        }
         
         // 窗口子类化相关
         private IntPtr _originalWndProc = IntPtr.Zero;
@@ -79,6 +88,18 @@ namespace clipboard
                     // 初始化快捷键服务
                     _hotkeyService = new HotkeyService();
                     _hotkeyService.Initialize(window, _trayIconService);
+                    
+                    // 加载并应用快捷键配置
+                    _settingsService = Handler?.MauiContext?.Services.GetService<Services.AppSettingsService>();
+                    if (_settingsService != null && _hotkeyService != null)
+                    {
+                        var settings = _settingsService.GetSettings();
+                        _hotkeyService.UpdateHotkeyConfig(
+                            settings.Hotkey.UseWinKey,
+                            settings.Hotkey.UseAltKey,
+                            settings.Hotkey.Key
+                        );
+                    }
                     
                     // 监听窗口位置变化
                     platformWindow.Activated += (sender, args) =>

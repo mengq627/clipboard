@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using clipboard.Models;
 
 namespace clipboard.Services;
@@ -12,6 +13,7 @@ public class ClipboardManagerService : IClipboardService
     private readonly SemaphoreSlim _lock = new(1, 1);
     private IClipboardService? _platformService;
     private bool _ignoreNextChange = false;
+    private AppSettingsService? _settingsService;
 
     public event EventHandler<ClipboardItem>? ClipboardChanged;
 
@@ -24,6 +26,11 @@ public class ClipboardManagerService : IClipboardService
         Directory.CreateDirectory(appDataPath);
         _dataFilePath = Path.Combine(appDataPath, "clipboard_data.json");
         LoadData();
+    }
+
+    public void SetSettingsService(AppSettingsService settingsService)
+    {
+        _settingsService = settingsService;
     }
 
     public void SetPlatformService(IClipboardService platformService)
@@ -99,11 +106,20 @@ public class ClipboardManagerService : IClipboardService
         await _lock.WaitAsync();
         try
         {
+            // 获取最大内容个数限制
+            var maxItems = _settingsService?.GetSettings().MaxItemsPerGroup ?? 100;
+            
             // 置顶项显示在最上面，然后按时间倒序
-            return _items
+            var items = _items
                 .OrderByDescending(i => i.IsPinned)
                 .ThenByDescending(i => i.LastUsedAt)
                 .ToList();
+            
+            // 应用最大内容个数限制（置顶项不受限制）
+            var pinnedItems = items.Where(i => i.IsPinned).ToList();
+            var nonPinnedItems = items.Where(i => !i.IsPinned).Take(maxItems).ToList();
+            
+            return pinnedItems.Concat(nonPinnedItems).ToList();
         }
         finally
         {
@@ -116,14 +132,23 @@ public class ClipboardManagerService : IClipboardService
         await _lock.WaitAsync();
         try
         {
+            // 获取最大内容个数限制
+            var maxItems = _settingsService?.GetSettings().MaxItemsPerGroup ?? 100;
+            
             // 更新每个组的项目列表
             foreach (var group in _groups)
             {
-                group.Items = _items
+                var groupItems = _items
                     .Where(i => i.GroupId == group.Id)
                     .OrderByDescending(i => i.IsPinned)
                     .ThenByDescending(i => i.LastUsedAt)
                     .ToList();
+                
+                // 应用最大内容个数限制（置顶项不受限制）
+                var pinnedItems = groupItems.Where(i => i.IsPinned).ToList();
+                var nonPinnedItems = groupItems.Where(i => !i.IsPinned).Take(maxItems).ToList();
+                
+                group.Items = pinnedItems.Concat(nonPinnedItems).ToList();
             }
             return _groups.ToList();
         }
@@ -287,7 +312,7 @@ public class ClipboardManagerService : IClipboardService
             if (File.Exists(_dataFilePath))
             {
                 var json = File.ReadAllText(_dataFilePath);
-                var data = JsonSerializer.Deserialize<ClipboardData>(json);
+                var data = JsonSerializer.Deserialize(json, ClipboardJsonContext.Default.ClipboardData);
                 if (data != null)
                 {
                     _items.Clear();
@@ -307,16 +332,13 @@ public class ClipboardManagerService : IClipboardService
     {
         try
         {
-            var data = new ClipboardData
+            var data = new Models.ClipboardData
             {
                 Items = _items,
                 Groups = _groups
             };
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions 
-            { 
-                WriteIndented = true,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            });
+            // 使用 JsonTypeInfo 直接序列化，避免裁剪警告
+            var json = JsonSerializer.Serialize(data, ClipboardJsonContext.Default.ClipboardData);
             File.WriteAllText(_dataFilePath, json);
         }
         catch (Exception ex)
@@ -325,10 +347,6 @@ public class ClipboardManagerService : IClipboardService
         }
     }
 
-    private class ClipboardData
-    {
-        public List<ClipboardItem> Items { get; set; } = new();
-        public List<ClipboardGroup> Groups { get; set; } = new();
-    }
+    // ClipboardData 已移至 Models/ClipboardJsonContext.cs 以支持裁剪
 }
 

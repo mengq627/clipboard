@@ -20,10 +20,15 @@ public class HotkeyService : IDisposable
     private const int WM_SYSKEYUP = 0x0105;
     
     private IntPtr _hookHandle = IntPtr.Zero;
-    private bool _isWinPressed = false;
-    private bool _isVPressed = false;
+    private bool _isModifierPressed = false; // 修饰键（Win或Alt）是否按下
+    private bool _isKeyPressed = false; // 字母键是否按下
     private MauiWindow? _mainWindow;
     private TrayIconService? _trayIconService;
+    
+    // 快捷键配置
+    private bool _useWinKey = true;
+    private bool _useAltKey = false;
+    private char _hotkeyKey = 'V';
     
     // 键盘 Hook 委托（必须保持引用以防止被 GC 回收）
     private LowLevelKeyboardProcDelegate? _keyboardProcDelegate;
@@ -62,6 +67,17 @@ public class HotkeyService : IDisposable
         
         // 安装低级键盘 Hook
         InstallKeyboardHook();
+    }
+    
+    /// <summary>
+    /// 更新快捷键配置
+    /// </summary>
+    public void UpdateHotkeyConfig(bool useWinKey, bool useAltKey, char key)
+    {
+        _useWinKey = useWinKey;
+        _useAltKey = useAltKey;
+        _hotkeyKey = char.ToUpperInvariant(key);
+        System.Diagnostics.Debug.WriteLine($"Hotkey updated: {(useWinKey ? "Win" : "Alt")} + {_hotkeyKey}");
     }
     
     /// <summary>
@@ -111,43 +127,50 @@ public class HotkeyService : IDisposable
         var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
         var vkCode = hookStruct.vkCode;
         
-        // 检查是否是 Win 键（左 Win 或右 Win）
+        // 检查是否是修饰键（Win 或 Alt）
         const uint VK_LWIN = 0x5B;
         const uint VK_RWIN = 0x5C;
+        const uint VK_LMENU = 0xA4; // 左 Alt
+        const uint VK_RMENU = 0xA5; // 右 Alt
         bool isWinKey = (vkCode == VK_LWIN || vkCode == VK_RWIN);
-        bool isVKey = (vkCode == VK_V);
+        bool isAltKey = (vkCode == VK_LMENU || vkCode == VK_RMENU);
+        bool isModifierKey = (_useWinKey && isWinKey) || (_useAltKey && isAltKey);
+        
+        // 检查是否是配置的字母键
+        uint targetKeyCode = (uint)_hotkeyKey;
+        bool isTargetKey = (vkCode == targetKeyCode);
         
         var message = wParam.ToInt32();
         bool isKeyDown = (message == WM_KEYDOWN || message == WM_SYSKEYDOWN);
         bool isKeyUp = (message == WM_KEYUP || message == WM_SYSKEYUP);
         
-        // 处理 Win 键按下/释放
-        if (isWinKey)
+        // 处理修饰键按下/释放
+        if (isModifierKey)
         {
             if (isKeyDown)
             {
-                _isWinPressed = true;
+                _isModifierPressed = true;
             }
             else if (isKeyUp)
             {
-                _isWinPressed = false;
-                // Win 键释放时，也重置 V 键状态（防止状态不同步）
-                if (_isVPressed)
+                _isModifierPressed = false;
+                // 修饰键释放时，也重置字母键状态（防止状态不同步）
+                if (_isKeyPressed)
                 {
-                    _isVPressed = false;
+                    _isKeyPressed = false;
                 }
             }
         }
         
-        // 处理 V 键按下/释放
-        if (isVKey)
+        // 处理字母键按下/释放
+        if (isTargetKey)
         {
             if (isKeyDown)
             {
-                // 如果 Win 键和 V 键同时按下，拦截并处理
-                if (_isWinPressed)
+                // 如果修饰键和字母键同时按下，拦截并处理
+                if (_isModifierPressed)
                 {
-                    _isVPressed = true;
+                    _isKeyPressed = true;
                     
                     // 在主线程上执行切换窗口操作
                     MainThread.BeginInvokeOnMainThread(() =>
@@ -161,15 +184,15 @@ public class HotkeyService : IDisposable
             }
             else if (isKeyUp)
             {
-                _isVPressed = false;
+                _isKeyPressed = false;
             }
         }
         
-        // 如果 Win 键释放，重置所有状态
-        if (isWinKey && isKeyUp)
+        // 如果修饰键释放，重置所有状态
+        if (isModifierKey && isKeyUp)
         {
-            _isWinPressed = false;
-            _isVPressed = false;
+            _isModifierPressed = false;
+            _isKeyPressed = false;
         }
         
         // 其他情况，继续传递消息

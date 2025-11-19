@@ -36,10 +36,7 @@ public class WindowPositionService
                 Height = rect.bottom - rect.top
             };
 
-            var json = JsonSerializer.Serialize(_savedPosition, new JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            });
+            var json = JsonSerializer.Serialize(_savedPosition, WindowPositionJsonContext.Default.WindowPosition);
             File.WriteAllText(_positionFilePath, json);
         }
         catch (Exception ex)
@@ -116,21 +113,13 @@ public class WindowPositionService
             if (File.Exists(_positionFilePath))
             {
                 var json = File.ReadAllText(_positionFilePath);
-                _savedPosition = JsonSerializer.Deserialize<WindowPosition>(json);
+                _savedPosition = JsonSerializer.Deserialize(json, WindowPositionJsonContext.Default.WindowPosition);
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error loading window position: {ex.Message}");
         }
-    }
-
-    private class WindowPosition
-    {
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
     }
 }
 #endif

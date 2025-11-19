@@ -11,5 +11,10 @@
         Title=""
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
+    
+    <ShellContent
+        Title="设置"
+        ContentTemplate="{DataTemplate local:Pages.SettingsPage}"
+        Route="SettingsPage" />
 
 </Shell>

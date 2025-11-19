@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:clipboard.ViewModels"
+             x:Class="clipboard.Pages.SettingsPage"
+             x:DataType="viewmodels:SettingsViewModel"
+             Title="设置"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,*">
+        <!-- 顶部返回按钮 -->
+        <Border Grid.Row="0"
+                BackgroundColor="#F5F5F5"
+                StrokeThickness="0,0,1,0"
+                Stroke="#E0E0E0"
+                Padding="10,8">
+            <Grid>
+                <HorizontalStackLayout Spacing="10">
+                    <Border x:Name="BackButtonBorder"
+                            Style="{StaticResource IconButtonBorderStyle}"
+                            WidthRequest="30"
+                            HeightRequest="30"
+                            VerticalOptions="Center">
+                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                     Source="back_icon.png"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnBackClicked"
+                                     ToolTipProperties.Text="返回"/>
+                    </Border>
+                    <Label Text="设置"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           VerticalOptions="Center"
+                           TextColor="#333"/>
+                </HorizontalStackLayout>
+            </Grid>
+        </Border>
+        
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- 分组最大内容个数设置 -->
+            <Border BackgroundColor="White"
+                    StrokeThickness="1"
+                    Stroke="#E0E0E0"
+                    Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="分组最大内容个数"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#333"/>
+                    <Label Text="设置每个分组（包括未分组列表）最多显示的内容个数"
+                           FontSize="12"
+                           TextColor="#666"/>
+                    <Entry Text="{Binding MaxItemsPerGroup, Mode=TwoWay}"
+                           Keyboard="Numeric"
+                           Placeholder="100"
+                           FontSize="14"/>
+                </VerticalStackLayout>
+            </Border>
+            
+            <!-- 快捷键设置 -->
+            <Border BackgroundColor="White"
+                    StrokeThickness="1"
+                    Stroke="#E0E0E0"
+                    Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="快捷键设置"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#333"/>
+                    <Label Text="设置用于显示/隐藏应用的快捷键"
+                           FontSize="12"
+                           TextColor="#666"/>
+                    
+                    <!-- 修饰键选择 -->
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10">
+                        <Label Grid.Row="0" Grid.Column="0" 
+                               Text="修饰键："
+                               FontSize="14"
+                               VerticalOptions="Center"/>
+                        <HorizontalStackLayout Grid.Row="0" Grid.Column="1" Spacing="15">
+                            <CheckBox IsChecked="{Binding UseWinKey, Mode=TwoWay}"
+                                      VerticalOptions="Center"/>
+                            <Label Text="Win"
+                                   FontSize="14"
+                                   VerticalOptions="Center">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnWinKeyLabelTapped"/>
+                                </Label.GestureRecognizers>
+                            </Label>
+                            
+                            <CheckBox IsChecked="{Binding UseAltKey, Mode=TwoWay}"
+                                      VerticalOptions="Center"/>
+                            <Label Text="Alt"
+                                   FontSize="14"
+                                   VerticalOptions="Center">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnAltKeyLabelTapped"/>
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </HorizontalStackLayout>
+                        
+                        <Label Grid.Row="1" Grid.Column="0" 
+                               Text="字母键："
+                               FontSize="14"
+                               VerticalOptions="Center"/>
+                        <Entry Grid.Row="1" Grid.Column="1"
+                               Text="{Binding HotkeyKey, Mode=TwoWay}"
+                               MaxLength="1"
+                               FontSize="14"
+                               Placeholder="V"/>
+                    </Grid>
+                    
+                    <Label Text="{Binding HotkeyDisplayText}"
+                           FontSize="12"
+                           TextColor="#999"
+                           Margin="0,5,0,0"/>
+                </VerticalStackLayout>
+            </Border>
+            
+            <!-- 保存按钮 -->
+            <Button Text="保存"
+                    Command="{Binding SaveCommand}"
+                    IsEnabled="{Binding IsModified}"
+                    FontSize="14"
+                    HeightRequest="40"
+                    CornerRadius="5"
+                    Margin="0,10,0,0">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding IsModified}" Value="True">
+                        <Setter Property="BackgroundColor" Value="#512BD4"/>
+                        <Setter Property="TextColor" Value="White"/>
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding IsModified}" Value="False">
+                        <Setter Property="BackgroundColor" Value="#E0E0E0"/>
+                        <Setter Property="TextColor" Value="#999999"/>
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
+
