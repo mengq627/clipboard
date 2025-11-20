@@ -11,6 +11,7 @@ public class TrayIconService : IDisposable
     private NotifyIcon? _notifyIcon;
     private MauiWindow? _mainWindow;
     private bool _isDisposed = false;
+    private Action? _exitHandler;
 
     public void Initialize(MauiWindow mainWindow)
     {
@@ -98,10 +99,38 @@ public class TrayIconService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 设置退出处理器，用于标记应用正在退出
+    /// </summary>
+    public void SetExitHandler(Action exitHandler)
+    {
+        _exitHandler = exitHandler;
+    }
+    
     private void ExitApplication()
     {
+        // 调用退出处理器，标记应用正在退出
+        _exitHandler?.Invoke();
+        
+        // 清理托盘图标
         _notifyIcon?.Dispose();
-        System.Windows.Forms.Application.Exit();
+        
+        // 在主线程上退出 MAUI 应用
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // 关闭所有窗口（现在会真正关闭，因为 _isExiting 已设置）
+            if (_mainWindow != null)
+            {
+                var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+                if (platformWindow != null)
+                {
+                    platformWindow.Close();
+                }
+            }
+            
+            // 退出应用
+            Microsoft.Maui.Controls.Application.Current?.Quit();
+        });
     }
 
     private void HideTaskbarIcon()
