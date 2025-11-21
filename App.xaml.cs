@@ -136,8 +136,20 @@ namespace clipboard
                     
                     // 处理窗口关闭按钮点击 - 隐藏窗口而不是关闭
                     // WinUI 3 使用 Closed 事件而不是 Closing
+                    // 注意：需要检查是否是真正的退出请求（通过标志位）
+                    bool isExiting = false;
+                    
+                    // 提供一个方法来设置退出标志
+                    _trayIconService?.SetExitHandler(() => { isExiting = true; });
+                    
                     platformWindow.Closed += (sender, args) =>
                     {
+                        // 如果是退出请求，允许窗口关闭
+                        if (isExiting)
+                        {
+                            return; // 不阻止关闭
+                        }
+                        
                         // 保存位置
                         _windowPositionService?.SaveWindowPosition(platformWindow);
                         // 使用Windows API隐藏窗口而不是真正关闭
