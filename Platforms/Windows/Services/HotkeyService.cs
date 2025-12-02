@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using MauiWindow = Microsoft.Maui.Controls.Window;
+using clipboard.Utils;
 
 namespace clipboard.Platforms.Windows.Services;
 
@@ -22,7 +23,6 @@ public class HotkeyService : IDisposable
     private IntPtr _hookHandle = IntPtr.Zero;
     private bool _isModifierPressed = false; // 修饰键（Win或Alt）是否按下
     private bool _isKeyPressed = false; // 字母键是否按下
-    private MauiWindow? _mainWindow;
     private TrayIconService? _trayIconService;
     
     // 快捷键配置
@@ -62,7 +62,6 @@ public class HotkeyService : IDisposable
     
     public void Initialize(MauiWindow mainWindow, TrayIconService trayIconService)
     {
-        _mainWindow = mainWindow;
         _trayIconService = trayIconService;
         
         // 安装低级键盘 Hook
@@ -111,13 +110,14 @@ public class HotkeyService : IDisposable
             System.Diagnostics.Debug.WriteLine($"Error installing keyboard hook: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 低级键盘 Hook 过程，拦截 Win+V 组合键
+    /// We need to record the state of modifier keys and target key separately.
     /// </summary>
     private IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        // 如果 nCode < 0，必须调用 CallNextHookEx 并返回其结果
+        // Call other hooks
         if (nCode < 0)
         {
             return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
@@ -128,6 +128,7 @@ public class HotkeyService : IDisposable
         var vkCode = hookStruct.vkCode;
         
         // 检查是否是修饰键（Win 或 Alt）
+        // TODO: Only support `Win` + `v` now
         const uint VK_LWIN = 0x5B;
         const uint VK_RWIN = 0x5C;
         const uint VK_LMENU = 0xA4; // 左 Alt
@@ -135,7 +136,7 @@ public class HotkeyService : IDisposable
         bool isWinKey = (vkCode == VK_LWIN || vkCode == VK_RWIN);
         bool isAltKey = (vkCode == VK_LMENU || vkCode == VK_RMENU);
         bool isModifierKey = (_useWinKey && isWinKey) || (_useAltKey && isAltKey);
-        
+
         // 检查是否是配置的字母键
         uint targetKeyCode = (uint)_hotkeyKey;
         bool isTargetKey = (vkCode == targetKeyCode);
@@ -143,8 +144,10 @@ public class HotkeyService : IDisposable
         var message = wParam.ToInt32();
         bool isKeyDown = (message == WM_KEYDOWN || message == WM_SYSKEYDOWN);
         bool isKeyUp = (message == WM_KEYUP || message == WM_SYSKEYUP);
-        
-        // 处理修饰键按下/释放
+
+        DebugHelper.DebugWrite($"Key event: vkCode={vkCode}, isModifierKey={isModifierKey}, isTargetKey={isTargetKey}, " +
+            $"isKeyDown={isKeyDown}, isKeyUp={isKeyUp}");
+
         if (isModifierKey)
         {
             if (isKeyDown)
@@ -154,12 +157,10 @@ public class HotkeyService : IDisposable
             else if (isKeyUp)
             {
                 _isModifierPressed = false;
-                // 修饰键释放时，也重置字母键状态（防止状态不同步）
-                if (_isKeyPressed)
-                {
-                    _isKeyPressed = false;
-                }
+                _isKeyPressed = false;
             }
+
+            goto NextHook;
         }
         
         // 处理字母键按下/释放
@@ -167,15 +168,16 @@ public class HotkeyService : IDisposable
         {
             if (isKeyDown)
             {
+                _isKeyPressed = true;
                 // 如果修饰键和字母键同时按下，拦截并处理
                 if (_isModifierPressed)
                 {
-                    _isKeyPressed = true;
-                    
-                    // 在主线程上执行切换窗口操作
+                    DebugHelper.DebugWrite($"Hotkey has been pressed");
+
+                    // 在主线程上执行切换窗口操作，委托给 TrayIconService
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
-                        ToggleWindow();
+                        _trayIconService?.ToggleWindow();
                     });
                     
                     // 返回 1 表示已处理，阻止消息继续传递（这样系统剪贴板历史就不会弹出）
@@ -188,13 +190,7 @@ public class HotkeyService : IDisposable
             }
         }
         
-        // 如果修饰键释放，重置所有状态
-        if (isModifierKey && isKeyUp)
-        {
-            _isModifierPressed = false;
-            _isKeyPressed = false;
-        }
-        
+NextHook:
         // 其他情况，继续传递消息
         return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
     }
@@ -210,46 +206,6 @@ public class HotkeyService : IDisposable
             _hookHandle = IntPtr.Zero;
             _keyboardProcDelegate = null; // 释放委托引用
             System.Diagnostics.Debug.WriteLine("Keyboard hook uninstalled");
-        }
-    }
-    
-    public void ToggleWindow()
-    {
-        if (_mainWindow != null)
-        {
-            var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
-            if (platformWindow != null)
-            {
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
-                var isVisible = Vanara.PInvoke.User32.IsWindowVisible(hwnd);
-                
-                if (isVisible)
-                {
-                    // 窗口可见，检查是否有焦点
-                    var foregroundHwnd = Vanara.PInvoke.User32.GetForegroundWindow();
-                    var hasFocus = (foregroundHwnd == hwnd);
-                    
-                    if (hasFocus)
-                    {
-                        // 窗口可见且有焦点，隐藏窗口
-                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_HIDE);
-                    }
-                    else
-                    {
-                        // 窗口可见但失去焦点，重新聚焦到窗口
-                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
-                        Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
-                        platformWindow.Activate();
-                    }
-                }
-                else
-                {
-                    // 窗口不可见，显示并聚焦
-                    Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
-                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
-                    platformWindow.Activate();
-                }
-            }
         }
     }
     
