@@ -98,6 +98,62 @@ public class TrayIconService : IDisposable
             }
         }
     }
+    
+    /// <summary>
+    /// 切换窗口显示/隐藏状态（供 HotkeyService 调用）
+    /// </summary>
+    public void ToggleWindow()
+    {
+        if (_mainWindow != null)
+        {
+            // _mainWindow.Handler = NULL
+            var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+            if (platformWindow != null)
+            {
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
+                var isVisible = Vanara.PInvoke.User32.IsWindowVisible(hwnd);
+                
+                if (isVisible)
+                {
+                    // 窗口可见，检查是否有焦点
+                    var foregroundHwnd = Vanara.PInvoke.User32.GetForegroundWindow();
+                    var hasFocus = (foregroundHwnd == hwnd);
+                    
+                    if (hasFocus)
+                    {
+                        // 窗口可见且有焦点，隐藏窗口
+                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_HIDE);
+                    }
+                    else
+                    {
+                        // 窗口可见但失去焦点，重新聚焦到窗口
+                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+                        Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+                        platformWindow.Activate();
+                    }
+                }
+                else
+                {
+                    // 窗口不可见，显示并聚焦
+                    // 先恢复窗口（如果被最小化）
+                    Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_RESTORE);
+                    // 然后显示窗口
+                    Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+                    // 确保窗口在最前面
+                    Vanara.PInvoke.User32.BringWindowToTop(hwnd);
+                    // 设置窗口为前台窗口
+                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+                    // 激活 WinUI 窗口
+                    platformWindow.Activate();
+                    
+                    // 再次确保窗口在最前面（某些情况下需要多次调用）
+                    System.Threading.Thread.Sleep(10);
+                    Vanara.PInvoke.User32.BringWindowToTop(hwnd);
+                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// 设置退出处理器，用于标记应用正在退出
