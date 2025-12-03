@@ -40,8 +40,11 @@ public class WindowsClipboardService : IClipboardService
     private async void OnClipboardUpdate(object? sender, EventArgs e)
     {
         // 防止并发检查
-        if (!await _checkLock.WaitAsync(100))
-            return;
+        // 使用锁确保：
+        // 1. 剪贴板 API 不会被并发访问（Windows 剪贴板 API 不是完全线程安全的）
+        // 2. _lastClipboardContent 的读写是线程安全的
+        // 3. 避免重复处理同一个剪贴板更新
+        await _checkLock.WaitAsync();
 
         try
         {
