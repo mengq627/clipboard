@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36623.8 d17.14
+VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "clipboard", "clipboard.csproj", "{7D8D447E-AD33-4ED7-8E03-A9413A0CDAFD}"
 EndProject
@@ -15,6 +15,7 @@ Global
 		{7D8D447E-AD33-4ED7-8E03-A9413A0CDAFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D8D447E-AD33-4ED7-8E03-A9413A0CDAFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7D8D447E-AD33-4ED7-8E03-A9413A0CDAFD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D8D447E-AD33-4ED7-8E03-A9413A0CDAFD}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
