@@ -194,12 +194,20 @@
                                             Padding="5"
                                             Margin="0,5,0,8"
                                             IsVisible="{Binding ContentType, Converter={StaticResource ContentTypeToVisibilityConverter}, ConverterParameter=Image}">
-                                        <Image Source="{Binding Content, Converter={StaticResource Base64ToImageSourceConverter}}"
-                                               Aspect="AspectFit"
+                                        <Image Aspect="AspectFit"
                                                HeightRequest="120"
                                                WidthRequest="200"
                                                VerticalOptions="Start"
-                                               HorizontalOptions="Start"/>
+                                               HorizontalOptions="Start">
+                                            <Image.Triggers>
+                                                <DataTrigger TargetType="Image" 
+                                                             Binding="{Binding ContentType}" 
+                                                             Value="Image">
+                                                    <Setter Property="Source" 
+                                                            Value="{Binding Content, Converter={StaticResource Base64ToImageSourceConverter}}" />
+                                                </DataTrigger>
+                                          </Image.Triggers>
+                                      </Image>
                                     </Border>
 
                                     <!-- 时间和操作按钮 - 同一行，偏下 -->
@@ -268,3 +276,4 @@
             </ScrollView>
     </Grid>
 </ContentPage>
+
