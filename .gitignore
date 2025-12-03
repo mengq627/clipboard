@@ -4,3 +4,4 @@
 # 编译输出目录
 bin/
 obj/
+publish/
