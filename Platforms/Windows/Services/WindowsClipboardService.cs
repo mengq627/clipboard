@@ -6,13 +6,13 @@ using clipboard.Services;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using System.Drawing;
 using System.Drawing.Imaging;
+using clipboard.Utils;
 
 namespace clipboard.Platforms.Windows.Services;
 
 public class WindowsClipboardService : IClipboardService
 {
-    private PeriodicTimer? _monitoringTimer;
-    private CancellationTokenSource? _cancellationTokenSource;
+    private ClipboardMonitor? _clipboardMonitor;
     private string _lastClipboardContent = string.Empty;
     private bool _isMonitoring = false;
     private readonly SemaphoreSlim _checkLock = new(1, 1);
@@ -23,126 +23,113 @@ public class WindowsClipboardService : IClipboardService
     {
         if (_isMonitoring)
         {
-            System.Diagnostics.Debug.WriteLine("Clipboard monitoring already started");
+            DebugHelper.DebugWrite("Clipboard monitoring already started");
             return;
         }
 
-        System.Diagnostics.Debug.WriteLine("Starting clipboard monitoring...");
+        DebugHelper.DebugWrite("Starting clipboard monitoring...");
         _isMonitoring = true;
         _lastClipboardContent = await GetClipboardTextAsync();
-        System.Diagnostics.Debug.WriteLine($"Initial clipboard content: '{_lastClipboardContent}'");
-        _cancellationTokenSource = new CancellationTokenSource();
+        DebugHelper.DebugWrite($"Initial clipboard content: '{_lastClipboardContent}'");
 
-        // 使用PeriodicTimer来检查剪贴板变化（每300ms检查一次）
-        _monitoringTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(300));
-        
-        // 在后台任务中运行监控循环
-        _ = Task.Run(async () =>
+        // 创建并启动基于事件的剪贴板监听器
+        _clipboardMonitor = new ClipboardMonitor();
+        _clipboardMonitor.ClipboardUpdate += OnClipboardUpdate;
+    }
+
+    private async void OnClipboardUpdate(object? sender, EventArgs e)
+    {
+        // 防止并发检查
+        if (!await _checkLock.WaitAsync(100))
+            return;
+
+        try
         {
-            try
+            string contentType = "Text";
+            string content = string.Empty;
+            bool hasContent = false;
+            
+            // 优先检查图片内容（使用Windows API）
+            var hasImage = await CheckClipboardHasImageAsync();
+            
+            if (hasImage)
             {
-                while (await _monitoringTimer.WaitForNextTickAsync(_cancellationTokenSource.Token))
+                try
                 {
-                    // 防止并发检查
-                    if (!await _checkLock.WaitAsync(100, _cancellationTokenSource.Token))
-                        continue;
-
-                    try
+                    var imageBytes = await GetClipboardImageAsync();
+                    if (imageBytes != null && imageBytes.Length > 0)
                     {
-                        string contentType = "Text";
-                        string content = string.Empty;
-                        bool hasContent = false;
-                        
-                        // 优先检查图片内容（使用Windows API）
-                        var hasImage = await CheckClipboardHasImageAsync();
-                        
-                        if (hasImage)
-                        {
-                            try
-                            {
-                                var imageBytes = await GetClipboardImageAsync();
-                                if (imageBytes != null && imageBytes.Length > 0)
-                                {
-                                    contentType = "Image";
-                                    content = Convert.ToBase64String(imageBytes);
-                                    hasContent = true;
-                                    System.Diagnostics.Debug.WriteLine($"Detected image in clipboard, size: {imageBytes.Length} bytes");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Error getting image from clipboard: {ex.Message}");
-                            }
-                        }
-                        
-                        // 如果没有图片，检查文本内容
-                        if (!hasContent)
-                        {
-                            var currentContent = await GetClipboardTextAsync();
-                            if (!string.IsNullOrEmpty(currentContent))
-                            {
-                                contentType = "Text";
-                                content = currentContent;
-                                hasContent = true;
-                            }
-                        }
-                        
-                        // 检查内容是否变化
-                        var contentKey = contentType == "Image" ? $"IMAGE:{content.Substring(0, Math.Min(50, content.Length))}" : content;
-                        if (hasContent && contentKey != _lastClipboardContent)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Clipboard content changed: Type={contentType}, Length={content.Length}");
-                            _lastClipboardContent = contentKey;
-                            
-                            var item = new ClipboardItem
-                            {
-                                Content = content,
-                                CreatedAt = DateTime.Now,
-                                LastUsedAt = DateTime.Now,
-                                ContentType = contentType
-                            };
-
-                            // 在主线程上触发事件
-                            MainThread.BeginInvokeOnMainThread(() =>
-                            {
-                                ClipboardChanged?.Invoke(this, item);
-                            });
-                        }
-                        else if (!hasContent)
-                        {
-                            // 如果内容变为空，也更新_lastClipboardContent，但不触发事件
-                            _lastClipboardContent = string.Empty;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error monitoring clipboard: {ex.Message}");
-                    }
-                    finally
-                    {
-                        _checkLock.Release();
+                        contentType = "Image";
+                        content = Convert.ToBase64String(imageBytes);
+                        hasContent = true;
+                        DebugHelper.DebugWrite($"Detected image in clipboard, size: {imageBytes.Length} bytes");
                     }
                 }
+                catch (Exception ex)
+                {
+                    DebugHelper.DebugWrite($"Error getting image from clipboard: {ex.Message}");
+                }
             }
-            catch (OperationCanceledException)
+
+            else
             {
-                // 正常取消，不需要处理
+                var currentContent = await GetClipboardTextAsync();
+                if (!string.IsNullOrEmpty(currentContent))
+                {
+                    contentType = "Text";
+                    content = currentContent;
+                    hasContent = true;
+                }
             }
-            catch (Exception ex)
+            
+            // 检查内容是否变化
+            var contentKey = contentType == "Image" ? $"IMAGE:{content.Substring(0, Math.Min(50, content.Length))}" : content;
+            if (hasContent && contentKey != _lastClipboardContent)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in monitoring loop: {ex.Message}");
+                DebugHelper.DebugWrite($"Clipboard content changed: Type={contentType}, Length={content.Length}");
+                _lastClipboardContent = contentKey;
+                
+                var item = new ClipboardItem
+                {
+                    Content = content,
+                    CreatedAt = DateTime.Now,
+                    LastUsedAt = DateTime.Now,
+                    ContentType = contentType
+                };
+
+                // 在主线程上触发事件
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    ClipboardChanged?.Invoke(this, item);
+                });
             }
-        }, _cancellationTokenSource.Token);
+            else if (!hasContent)
+            {
+                // 如果内容变为空，也更新_lastClipboardContent，但不触发事件
+                _lastClipboardContent = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugHelper.DebugWrite($"Error monitoring clipboard: {ex.Message}");
+        }
+        finally
+        {
+            _checkLock.Release();
+        }
     }
 
     public Task StopMonitoringAsync()
     {
         _isMonitoring = false;
-        _cancellationTokenSource?.Cancel();
-        _monitoringTimer?.Dispose();
-        _monitoringTimer = null;
-        _cancellationTokenSource?.Dispose();
-        _cancellationTokenSource = null;
+        
+        if (_clipboardMonitor != null)
+        {
+            _clipboardMonitor.ClipboardUpdate -= OnClipboardUpdate;
+            _clipboardMonitor.Dispose();
+            _clipboardMonitor = null;
+        }
+        
         return Task.CompletedTask;
     }
 
