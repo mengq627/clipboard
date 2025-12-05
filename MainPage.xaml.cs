@@ -62,20 +62,16 @@ namespace clipboard
             // 页面获得焦点时，设置初始选中项
             if (BindingContext is ClipboardViewModel viewModel && viewModel.Items.Count > 0)
             {
-                if (viewModel.SelectedItemIndex < 0)
+                if (viewModel.SelectedItem == null)
                 {
-                    viewModel.SelectedItemIndex = 0;
+                    viewModel.SelectedItem = viewModel.Items[0];
                 }
             }
         }
         
         private void OnPageUnfocused(object? sender, FocusEventArgs e)
         {
-            // 页面失去焦点时，清除选中状态
-            if (BindingContext is ClipboardViewModel viewModel)
-            {
-                viewModel.SelectedItemIndex = -1;
-            }
+            // 页面失去焦点时，不清除选中状态（保持选中以便下次打开时继续）
         }
         
         private void OnPageAppearing(object? sender, EventArgs e)
@@ -97,12 +93,23 @@ namespace clipboard
             }
             
 #if WINDOWS
-            // 确保页面可以获得焦点以接收键盘事件
-            Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(100), () =>
+            // 确保 CollectionView 可以获得焦点并选中第一个项目
+            Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(200), () =>
             {
-                if (Handler?.PlatformView is Microsoft.UI.Xaml.Controls.Page page)
+                if (BindingContext is ClipboardViewModel viewModel && viewModel.Items.Count > 0)
                 {
-                    page.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
+                    // 选中第一个项目
+                    if (viewModel.SelectedItem == null)
+                    {
+                        viewModel.SelectedItem = viewModel.Items[0];
+                    }
+                    
+                    // 让 CollectionView 获得焦点
+                    if (_itemsCollectionView?.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.Control control)
+                    {
+                        control.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
+                        DebugHelper.DebugWrite("CollectionView focused on page appearing");
+                    }
                 }
             });
 #endif
@@ -141,23 +148,7 @@ namespace clipboard
         {
             base.OnHandlerChanged();
             
-            // 在 Windows 平台上，通过 WinUI 窗口处理键盘事件
-            // 尝试多种方式获取键盘事件
-            if (Handler?.PlatformView is Microsoft.UI.Xaml.Controls.Page page)
-            {
-                page.KeyDown += OnPageKeyDown;
-                // 确保页面可以获得焦点
-                page.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
-            }
-            
-            // 也尝试在窗口级别处理
-            if (this.Window?.Handler?.PlatformView is Microsoft.UI.Xaml.Window window)
-            {
-                window.Content.KeyDown += OnWindowContentKeyDown;
-            }
-            
-            // 在 CollectionView 级别处理键盘事件，拦截方向键和 jk 键
-            // 这样可以确保我们的代码优先处理这些按键
+            // 在 CollectionView 级别处理键盘事件
             if (_itemsCollectionView != null)
             {
                 _itemsCollectionView.HandlerChanged += OnCollectionViewHandlerChanged;
@@ -167,224 +158,128 @@ namespace clipboard
         private void OnCollectionViewHandlerChanged(object? sender, EventArgs e)
         {
             // 在 CollectionView 的 PlatformView 上处理键盘事件
+            // 只处理 jk 键，让 CollectionView 的默认处理来处理方向键
             if (_itemsCollectionView?.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.ItemsControl itemsControl)
             {
-                itemsControl.KeyDown += OnCollectionViewKeyDown;
+                // 只订阅 PreviewKeyDown 来处理 jk 键，转换为方向键
                 itemsControl.PreviewKeyDown += OnCollectionViewPreviewKeyDown;
-                // 也监听字符事件，用于捕获 jk 键
-                itemsControl.CharacterReceived += OnCollectionViewCharacterReceived;
                 DebugHelper.DebugWrite("CollectionView keyboard events attached");
             }
-        }
-        
-        private void OnCollectionViewCharacterReceived(object sender, Microsoft.UI.Xaml.Input.CharacterReceivedRoutedEventArgs e)
-        {
-            // 处理字符事件，用于捕获 jk 键（无论大小写）
-            var character = (char)e.Character;
-            DebugHelper.DebugWrite($"CharacterReceived: character='{character}' ({(int)character})");
             
-            if (BindingContext is not ClipboardViewModel viewModel)
-                return;
-            
-            // 检查是否是 j 或 k（不区分大小写）
-            if (character == 'j' || character == 'J')
+            // 设置 CollectionView 获得焦点并选中第一个项目
+            if (_itemsCollectionView != null && BindingContext is ClipboardViewModel viewModel)
             {
-                DebugHelper.DebugWrite("Character 'j' detected, navigating DOWN");
-                e.Handled = true;
-                var oldIndex = viewModel.SelectedItemIndex;
-                viewModel.NavigateDown();
-                var newIndex = viewModel.SelectedItemIndex;
-                DebugHelper.DebugWrite($"NavigateDown: {oldIndex} -> {newIndex}");
-                
-                MainThread.BeginInvokeOnMainThread(() =>
+                Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(200), () =>
                 {
-                    UpdateSelectedItemVisualState(viewModel);
-                    ScrollToSelectedItem(viewModel);
-                });
-            }
-            else if (character == 'k' || character == 'K')
-            {
-                DebugHelper.DebugWrite("Character 'k' detected, navigating UP");
-                e.Handled = true;
-                var oldIndex = viewModel.SelectedItemIndex;
-                viewModel.NavigateUp();
-                var newIndex = viewModel.SelectedItemIndex;
-                DebugHelper.DebugWrite($"NavigateUp: {oldIndex} -> {newIndex}");
-                
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    UpdateSelectedItemVisualState(viewModel);
-                    ScrollToSelectedItem(viewModel);
+                    // 让 CollectionView 获得焦点
+                    if (_itemsCollectionView?.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.Control control)
+                    {
+                        control.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
+                        DebugHelper.DebugWrite("CollectionView focused");
+                    }
+                    
+                    // 选中第一个项目
+                    if (viewModel.Items.Count > 0 && viewModel.SelectedItem == null)
+                    {
+                        viewModel.SelectedItem = viewModel.Items[0];
+                        DebugHelper.DebugWrite($"Selected first item: {viewModel.Items[0].Id}");
+                    }
                 });
             }
         }
         
         private void OnCollectionViewPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
-            // PreviewKeyDown 在 KeyDown 之前触发，可以拦截事件
-            // 这样可以阻止 CollectionView 的默认方向键处理
-            DebugHelper.DebugWrite($"CollectionView PreviewKeyDown: Key={e.Key}, OriginalKey={e.OriginalKey}, Handled={e.Handled}");
-            
-            // 先处理事件
-            bool handled = HandleKeyEvent(e);
-            
-            if (handled)
-            {
-                // 如果事件已被处理，确保阻止继续传递
-                e.Handled = true;
-                DebugHelper.DebugWrite("Key event handled in PreviewKeyDown, preventing default behavior");
-            }
-        }
-        
-        private void OnCollectionViewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
-        {
-            // 如果 PreviewKeyDown 已经处理了事件，这里就不需要再处理了
-            if (!e.Handled)
-            {
-                HandleKeyEvent(e);
-            }
-            else
-            {
-                DebugHelper.DebugWrite("KeyDown event already handled in PreviewKeyDown, skipping");
-            }
-        }
-        
-        private void OnWindowContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
-        {
-            HandleKeyEvent(e);
-        }
-        
-        private void OnPageKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
-        {
-            HandleKeyEvent(e);
-        }
-        
-        private bool HandleKeyEvent(Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
-        {
-            if (BindingContext is not ClipboardViewModel viewModel)
-                return false;
-            
-            // 添加调试信息
-            DebugHelper.DebugWrite($"KeyDown event: Key={e.Key}, OriginalKey={e.OriginalKey}");
-            
-            // 处理方向键和 hjkl
-            // 注意：VirtualKey.J 和 VirtualKey.K 对应大写和小写字母
+            // 只处理 jk 键，将它们转换为方向键事件
+            // 让 CollectionView 的默认处理来处理方向键和 Enter/Escape
             var key = e.Key;
             var originalKey = e.OriginalKey;
             
-            // 检查是否是方向键或 hjkl
-            // 在 WinUI 中，VirtualKey.J 和 VirtualKey.K 对应字母 J 和 K（大小写都相同）
-            bool isUp = key == Windows.System.VirtualKey.Up || 
-                       key == Windows.System.VirtualKey.K ||
-                       originalKey == Windows.System.VirtualKey.K;
-            bool isDown = key == Windows.System.VirtualKey.Down || 
-                         key == Windows.System.VirtualKey.J ||
-                         originalKey == Windows.System.VirtualKey.J;
+            // 检查是否是 jk 键
+            bool isJ = key == Windows.System.VirtualKey.J || originalKey == Windows.System.VirtualKey.J;
+            bool isK = key == Windows.System.VirtualKey.K || originalKey == Windows.System.VirtualKey.K;
             
-            DebugHelper.DebugWrite($"isUp={isUp}, isDown={isDown}, key={key}, originalKey={originalKey}, Items.Count={viewModel.Items.Count}, SelectedItemIndex={viewModel.SelectedItemIndex}");
-            
-            if (isUp)
+            if (isJ || isK)
             {
-                DebugHelper.DebugWrite("Navigating UP - calling NavigateUp()");
-                var oldIndex = viewModel.SelectedItemIndex;
-                viewModel.NavigateUp();
-                var newIndex = viewModel.SelectedItemIndex;
-                DebugHelper.DebugWrite($"NavigateUp completed: {oldIndex} -> {newIndex}");
+                DebugHelper.DebugWrite($"Converting {(isJ ? "J" : "K")} key to {(isJ ? "Down" : "Up")} arrow key");
                 
-                // 确保在主线程上更新 UI
-                MainThread.BeginInvokeOnMainThread(() =>
+                // 创建一个新的方向键事件
+                var targetKey = isJ ? Windows.System.VirtualKey.Down : Windows.System.VirtualKey.Up;
+                
+                // 通过模拟方向键事件来触发 CollectionView 的默认导航
+                // 由于我们不能直接创建新的 KeyRoutedEventArgs，我们手动调用导航逻辑
+                if (BindingContext is ClipboardViewModel viewModel)
                 {
-                    UpdateSelectedItemVisualState(viewModel);
-                    ScrollToSelectedItem(viewModel);
-                });
+                    if (isJ && viewModel.SelectedItemIndex < viewModel.Items.Count - 1)
+                    {
+                        // 向下导航
+                        var nextIndex = viewModel.SelectedItemIndex + 1;
+                        if (nextIndex < viewModel.Items.Count)
+                        {
+                            viewModel.SelectedItem = viewModel.Items[nextIndex];
+                            // 滚动到选中项
+                            if (_itemsCollectionView != null)
+                            {
+                                _itemsCollectionView.ScrollTo(viewModel.SelectedItem, position: ScrollToPosition.MakeVisible, animate: true);
+                            }
+                        }
+                    }
+                    else if (isK && viewModel.SelectedItemIndex > 0)
+                    {
+                        // 向上导航
+                        var prevIndex = viewModel.SelectedItemIndex - 1;
+                        if (prevIndex >= 0)
+                        {
+                            viewModel.SelectedItem = viewModel.Items[prevIndex];
+                            // 滚动到选中项
+                            if (_itemsCollectionView != null)
+                            {
+                                _itemsCollectionView.ScrollTo(viewModel.SelectedItem, position: ScrollToPosition.MakeVisible, animate: true);
+                            }
+                        }
+                    }
+                }
                 
-                e.Handled = true;
-                return true;
+                e.Handled = true; // 阻止 jk 键的默认处理
+                return;
             }
             
-            if (isDown)
+            // 处理 Enter 和 Escape 键
+            if (key == Windows.System.VirtualKey.Enter)
             {
-                DebugHelper.DebugWrite("Navigating DOWN - calling NavigateDown()");
-                var oldIndex = viewModel.SelectedItemIndex;
-                viewModel.NavigateDown();
-                var newIndex = viewModel.SelectedItemIndex;
-                DebugHelper.DebugWrite($"NavigateDown completed: {oldIndex} -> {newIndex}");
-                
-                // 确保在主线程上更新 UI
-                MainThread.BeginInvokeOnMainThread(() =>
+                if (BindingContext is ClipboardViewModel viewModel && viewModel.SelectedItem != null)
                 {
-                    UpdateSelectedItemVisualState(viewModel);
-                    ScrollToSelectedItem(viewModel);
-                });
-                
-                e.Handled = true;
-                return true;
-            }
-            
-            // 处理其他键
-            switch (key)
-            {
-                case Windows.System.VirtualKey.Enter:
                     _ = HandleEnterKeyAsync(viewModel);
                     e.Handled = true;
-                    return true;
-                    
-                case Windows.System.VirtualKey.Escape:
-                    // ESC 键隐藏窗口
-                    if (Microsoft.Maui.Controls.Application.Current is App app)
-                    {
-                        app.HideMainWindow();
-                    }
+                }
+            }
+            else if (key == Windows.System.VirtualKey.Escape)
+            {
+                if (Microsoft.Maui.Controls.Application.Current is App app)
+                {
+                    app.HideMainWindow();
                     e.Handled = true;
-                    return true;
+                }
             }
             
-            return false;
+            // 其他键（包括方向键）让 CollectionView 的默认处理来处理
         }
 #endif
 
-        private void UpdateSelectedItemVisualState(ClipboardViewModel viewModel)
-        {
-            // SelectedItemIndex 属性的 setter 已经会自动触发 PropertyChanged 事件
-            // 不需要手动调用 OnPropertyChanged（这是受保护的方法）
-            // 视觉状态更新将在 ScrollToSelectedItem 中处理
-        }
-        
-        private void ScrollToSelectedItem(ClipboardViewModel viewModel)
-        {
-            if (viewModel.SelectedItemIndex >= 0 && 
-                viewModel.SelectedItemIndex < viewModel.Items.Count)
-            {
-                var selectedItem = viewModel.Items[viewModel.SelectedItemIndex];
-                if (selectedItem != null && _itemsCollectionView != null)
-                {
-                    _itemsCollectionView.ScrollTo(selectedItem, position: ScrollToPosition.MakeVisible, animate: true);
-                    
-                    // 延迟更新视觉状态，确保滚动完成后再更新
-                    Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(100), () =>
-                    {
-                        UpdateItemVisualStates(viewModel);
-                    });
-                }
-            }
-        }
-        
-        private void UpdateItemVisualStates(ClipboardViewModel viewModel)
-        {
-            // 视觉状态现在通过 IsSelected 属性自动更新，不需要手动处理
-            // 这个方法保留用于未来可能的扩展
-        }
         
         private async Task HandleEnterKeyAsync(ClipboardViewModel viewModel)
         {
             // 确认选择并粘贴
-            var success = await viewModel.ConfirmSelectionAsync();
-            if (success)
+            if (viewModel.SelectedItem != null)
             {
-                // 隐藏窗口
-                if (Microsoft.Maui.Controls.Application.Current is App app)
+                var success = await viewModel.CopyItemAsync(viewModel.SelectedItem.Id);
+                if (success)
                 {
-                    app.HideMainWindow();
+                    // 隐藏窗口
+                    if (Microsoft.Maui.Controls.Application.Current is App app)
+                    {
+                        app.HideMainWindow();
+                    }
                 }
             }
         }

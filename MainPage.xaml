@@ -153,7 +153,9 @@
             <ScrollView Grid.Column="1">
                 <CollectionView x:Name="ItemsCollectionView"
                                 ItemsSource="{Binding Items}"
-                                EmptyView="暂无剪贴板历史记录">
+                                EmptyView="暂无剪贴板历史记录"
+                                SelectionMode="Single"
+                                SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:ClipboardItem">
                             <Border x:Name="ItemBorder"
@@ -162,27 +164,6 @@
                                     Stroke="#E0E0E0"
                                     Padding="15,12"
                                     Margin="0,0,0,0">
-                                <VisualStateManager.VisualStateGroups>
-                                    <VisualStateGroupList>
-                                        <VisualStateGroup x:Name="SelectionStates">
-                                            <VisualState x:Name="Normal">
-                                                <VisualState.StateTriggers>
-                                                    <StateTrigger IsActive="{Binding IsSelected, Converter={StaticResource InvertedBoolConverter}}" />
-                                                </VisualState.StateTriggers>
-                                            </VisualState>
-                                            <VisualState x:Name="Selected">
-                                                <VisualState.StateTriggers>
-                                                    <StateTrigger IsActive="{Binding IsSelected}" />
-                                                </VisualState.StateTriggers>
-                                                <VisualState.Setters>
-                                                    <Setter Property="BackgroundColor" Value="#E3F2FD" />
-                                                    <Setter Property="Stroke" Value="#2196F3" />
-                                                    <Setter Property="StrokeThickness" Value="2" />
-                                                </VisualState.Setters>
-                                            </VisualState>
-                                        </VisualStateGroup>
-                                    </VisualStateGroupList>
-                                </VisualStateManager.VisualStateGroups>
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="*"/>

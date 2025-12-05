@@ -37,6 +37,33 @@ public class ClipboardViewModel : BindableObject
     public ObservableCollection<ClipboardGroup> Groups { get; }
 
     /// <summary>
+    /// 当前选中的项目（用于 CollectionView 的默认导航）
+    /// </summary>
+    public ClipboardItem? SelectedItem
+    {
+        get => _selectedItem;
+        set
+        {
+            if (_selectedItem?.Id != value?.Id)
+            {
+                _selectedItem = value;
+                OnPropertyChanged();
+                
+                // 同步更新 SelectedItemIndex
+                if (value != null)
+                {
+                    _selectedItemIndex = Items.IndexOf(value);
+                }
+                else
+                {
+                    _selectedItemIndex = -1;
+                }
+            }
+        }
+    }
+    private ClipboardItem? _selectedItem;
+
+    /// <summary>
     /// 当前选中的项目索引（用于键盘导航）
     /// </summary>
     public int SelectedItemIndex
@@ -46,18 +73,16 @@ public class ClipboardViewModel : BindableObject
         {
             if (_selectedItemIndex != value)
             {
-                // 清除之前的选中状态
-                if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
-                {
-                    Items[_selectedItemIndex].IsSelected = false;
-                }
-                
                 _selectedItemIndex = value;
                 
-                // 设置新的选中状态
+                // 同步更新 SelectedItem
                 if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
                 {
-                    Items[_selectedItemIndex].IsSelected = true;
+                    _selectedItem = Items[_selectedItemIndex];
+                }
+                else
+                {
+                    _selectedItem = null;
                 }
                 
                 OnPropertyChanged();
@@ -143,53 +168,6 @@ public class ClipboardViewModel : BindableObject
         }
     }
 
-    /// <summary>
-    /// 向上导航（上一个项目）
-    /// </summary>
-    public void NavigateUp()
-    {
-        if (Items.Count == 0)
-        {
-            clipboard.Utils.DebugHelper.DebugWrite("NavigateUp: Items.Count is 0, returning");
-            return;
-        }
-        
-        var oldIndex = _selectedItemIndex;
-        if (_selectedItemIndex > 0)
-        {
-            SelectedItemIndex--;
-        }
-        else
-        {
-            // 循环到最后一个
-            SelectedItemIndex = Items.Count - 1;
-        }
-        clipboard.Utils.DebugHelper.DebugWrite($"NavigateUp: {oldIndex} -> {SelectedItemIndex}, Items.Count={Items.Count}");
-    }
-
-    /// <summary>
-    /// 向下导航（下一个项目）
-    /// </summary>
-    public void NavigateDown()
-    {
-        if (Items.Count == 0)
-        {
-            clipboard.Utils.DebugHelper.DebugWrite("NavigateDown: Items.Count is 0, returning");
-            return;
-        }
-        
-        var oldIndex = _selectedItemIndex;
-        if (_selectedItemIndex < Items.Count - 1)
-        {
-            SelectedItemIndex++;
-        }
-        else
-        {
-            // 循环到第一个
-            SelectedItemIndex = 0;
-        }
-        clipboard.Utils.DebugHelper.DebugWrite($"NavigateDown: {oldIndex} -> {SelectedItemIndex}, Items.Count={Items.Count}");
-    }
 
     /// <summary>
     /// 确认选择并粘贴当前选中的项目
@@ -217,22 +195,12 @@ public class ClipboardViewModel : BindableObject
         System.Diagnostics.Debug.WriteLine($"LoadItemsInternal: Current items count={Items.Count}, Filtered items count={filteredItems.Count}");
         
         // 保存当前选中项的 ID（如果存在）
-        string? selectedItemId = null;
-        if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
-        {
-            selectedItemId = Items[_selectedItemIndex].Id;
-        }
+        string? selectedItemId = _selectedItem?.Id;
         
-        // 清除所有项的选中状态
-        foreach (var item in Items)
-        {
-            item.IsSelected = false;
-        }
-        
-        // 重置选中索引（列表更新时）
-        var oldSelectedIndex = _selectedItemIndex;
+        // 重置选中项（列表更新时）
         if (Items.Count != filteredItems.Count)
         {
+            _selectedItem = null;
             _selectedItemIndex = -1;
         }
         
@@ -295,15 +263,15 @@ public class ClipboardViewModel : BindableObject
         // 如果之前有选中项，尝试在新列表中恢复选中状态
         if (selectedItemId != null)
         {
-            var newSelectedIndex = Items.ToList().FindIndex(item => item.Id == selectedItemId);
-            if (newSelectedIndex >= 0)
+            var newSelectedItem = Items.FirstOrDefault(item => item.Id == selectedItemId);
+            if (newSelectedItem != null)
             {
-                SelectedItemIndex = newSelectedIndex;
+                SelectedItem = newSelectedItem;
             }
         }
     }
 
-    private async Task CopyItemAsync(string itemId)
+    public async Task<bool> CopyItemAsync(string itemId)
     {
         try
         {
@@ -316,12 +284,14 @@ public class ClipboardViewModel : BindableObject
                 await _clipboardService.UpdateItemAsync(item);
                 // 只更新项目列表，不刷新分组列表（因为复制操作不会影响分组）
                 await LoadItemsAsync();
+                return true;
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error copying item: {ex.Message}");
         }
+        return false;
     }
 
     private async Task DeleteItemAsync(string itemId)
