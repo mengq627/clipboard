@@ -21,6 +21,16 @@ namespace clipboard
             _hotkeyService?.UpdateHotkeyConfig(useWinKey, useAltKey, key);
         }
         
+        /// <summary>
+        /// 隐藏主窗口（供 MainPage 调用）
+        /// </summary>
+        public void HideMainWindow()
+        {
+#if WINDOWS
+            _trayIconService?.HideWindow();
+#endif
+        }
+        
         // 窗口子类化相关
         private IntPtr _originalWndProc = IntPtr.Zero;
         private WndProcDelegate? _wndProcDelegate;

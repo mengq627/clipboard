@@ -85,7 +85,7 @@ public class TrayIconService : IDisposable
         }
     }
 
-    private void HideWindow()
+    public void HideWindow()
     {
         if (_mainWindow != null)
         {

@@ -151,15 +151,29 @@
 
             <!-- 右侧剪贴板项目列表 -->
             <ScrollView Grid.Column="1">
-                <CollectionView ItemsSource="{Binding Items}"
+                <CollectionView x:Name="ItemsCollectionView"
+                                ItemsSource="{Binding Items}"
                                 EmptyView="暂无剪贴板历史记录">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:ClipboardItem">
-                            <Border BackgroundColor="White"
+                            <Border x:Name="ItemBorder"
+                                    BackgroundColor="White"
                                     StrokeThickness="0,0,0,1"
                                     Stroke="#E0E0E0"
                                     Padding="15,12"
                                     Margin="0,0,0,0">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="SelectionStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="Selected">
+                                            <VisualState.Setters>
+                                                <Setter Property="BackgroundColor" Value="#E3F2FD" />
+                                                <Setter Property="Stroke" Value="#2196F3" />
+                                                <Setter Property="StrokeThickness" Value="2" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="*"/>

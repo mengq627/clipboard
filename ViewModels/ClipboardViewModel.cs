@@ -9,6 +9,7 @@ public class ClipboardViewModel : BindableObject
 {
     private readonly IClipboardService _clipboardService;
     private ClipboardGroup? _selectedGroup;
+    private int _selectedItemIndex = -1;
 
     public ClipboardViewModel(IClipboardService clipboardService)
     {
@@ -34,6 +35,22 @@ public class ClipboardViewModel : BindableObject
 
     public ObservableCollection<ClipboardItem> Items { get; }
     public ObservableCollection<ClipboardGroup> Groups { get; }
+
+    /// <summary>
+    /// 当前选中的项目索引（用于键盘导航）
+    /// </summary>
+    public int SelectedItemIndex
+    {
+        get => _selectedItemIndex;
+        set
+        {
+            if (_selectedItemIndex != value)
+            {
+                _selectedItemIndex = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public ClipboardGroup? SelectedGroup
     {
@@ -113,6 +130,59 @@ public class ClipboardViewModel : BindableObject
         }
     }
 
+    /// <summary>
+    /// 向上导航（上一个项目）
+    /// </summary>
+    public void NavigateUp()
+    {
+        if (Items.Count == 0) return;
+        
+        if (_selectedItemIndex > 0)
+        {
+            SelectedItemIndex--;
+        }
+        else
+        {
+            // 循环到最后一个
+            SelectedItemIndex = Items.Count - 1;
+        }
+    }
+
+    /// <summary>
+    /// 向下导航（下一个项目）
+    /// </summary>
+    public void NavigateDown()
+    {
+        if (Items.Count == 0) return;
+        
+        if (_selectedItemIndex < Items.Count - 1)
+        {
+            SelectedItemIndex++;
+        }
+        else
+        {
+            // 循环到第一个
+            SelectedItemIndex = 0;
+        }
+    }
+
+    /// <summary>
+    /// 确认选择并粘贴当前选中的项目
+    /// </summary>
+    public async Task<bool> ConfirmSelectionAsync()
+    {
+        if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
+        {
+            var selectedItem = Items[_selectedItemIndex];
+            if (selectedItem != null)
+            {
+                await CopyItemAsync(selectedItem.Id);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void LoadItemsInternal(List<ClipboardItem> items)
     {
         // 过滤项目（根据选择的分组）
@@ -120,6 +190,12 @@ public class ClipboardViewModel : BindableObject
             _selectedGroup == null || item.GroupId == _selectedGroup.Id).ToList();
         
         System.Diagnostics.Debug.WriteLine($"LoadItemsInternal: Current items count={Items.Count}, Filtered items count={filteredItems.Count}");
+        
+        // 重置选中索引（列表更新时）
+        if (Items.Count != filteredItems.Count)
+        {
+            SelectedItemIndex = -1;
+        }
         
         // 检查是否需要更新（避免不必要的刷新）
         if (Items.Count == filteredItems.Count)
