@@ -20,6 +20,7 @@
             <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter" />
             <converters:ContentTypeToVisibilityConverter x:Key="ContentTypeToVisibilityConverter" />
             <converters:IndexToSelectionStateConverter x:Key="IndexToSelectionStateConverter" />
+            <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
             
             <!-- 图标按钮样式 - ImageButton 背景始终透明，由 Border 负责显示背景 -->
             <Style x:Key="IconButtonStyle" TargetType="ImageButton">

@@ -46,7 +46,20 @@ public class ClipboardViewModel : BindableObject
         {
             if (_selectedItemIndex != value)
             {
+                // 清除之前的选中状态
+                if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
+                {
+                    Items[_selectedItemIndex].IsSelected = false;
+                }
+                
                 _selectedItemIndex = value;
+                
+                // 设置新的选中状态
+                if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
+                {
+                    Items[_selectedItemIndex].IsSelected = true;
+                }
+                
                 OnPropertyChanged();
             }
         }
@@ -135,8 +148,13 @@ public class ClipboardViewModel : BindableObject
     /// </summary>
     public void NavigateUp()
     {
-        if (Items.Count == 0) return;
+        if (Items.Count == 0)
+        {
+            clipboard.Utils.DebugHelper.DebugWrite("NavigateUp: Items.Count is 0, returning");
+            return;
+        }
         
+        var oldIndex = _selectedItemIndex;
         if (_selectedItemIndex > 0)
         {
             SelectedItemIndex--;
@@ -146,6 +164,7 @@ public class ClipboardViewModel : BindableObject
             // 循环到最后一个
             SelectedItemIndex = Items.Count - 1;
         }
+        clipboard.Utils.DebugHelper.DebugWrite($"NavigateUp: {oldIndex} -> {SelectedItemIndex}, Items.Count={Items.Count}");
     }
 
     /// <summary>
@@ -153,8 +172,13 @@ public class ClipboardViewModel : BindableObject
     /// </summary>
     public void NavigateDown()
     {
-        if (Items.Count == 0) return;
+        if (Items.Count == 0)
+        {
+            clipboard.Utils.DebugHelper.DebugWrite("NavigateDown: Items.Count is 0, returning");
+            return;
+        }
         
+        var oldIndex = _selectedItemIndex;
         if (_selectedItemIndex < Items.Count - 1)
         {
             SelectedItemIndex++;
@@ -164,6 +188,7 @@ public class ClipboardViewModel : BindableObject
             // 循环到第一个
             SelectedItemIndex = 0;
         }
+        clipboard.Utils.DebugHelper.DebugWrite($"NavigateDown: {oldIndex} -> {SelectedItemIndex}, Items.Count={Items.Count}");
     }
 
     /// <summary>
@@ -191,10 +216,24 @@ public class ClipboardViewModel : BindableObject
         
         System.Diagnostics.Debug.WriteLine($"LoadItemsInternal: Current items count={Items.Count}, Filtered items count={filteredItems.Count}");
         
+        // 保存当前选中项的 ID（如果存在）
+        string? selectedItemId = null;
+        if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
+        {
+            selectedItemId = Items[_selectedItemIndex].Id;
+        }
+        
+        // 清除所有项的选中状态
+        foreach (var item in Items)
+        {
+            item.IsSelected = false;
+        }
+        
         // 重置选中索引（列表更新时）
+        var oldSelectedIndex = _selectedItemIndex;
         if (Items.Count != filteredItems.Count)
         {
-            SelectedItemIndex = -1;
+            _selectedItemIndex = -1;
         }
         
         // 检查是否需要更新（避免不必要的刷新）
@@ -251,6 +290,16 @@ public class ClipboardViewModel : BindableObject
         {
             Items.Add(item);
             System.Diagnostics.Debug.WriteLine($"Added item {item.Id}: IsPinned={item.IsPinned}");
+        }
+        
+        // 如果之前有选中项，尝试在新列表中恢复选中状态
+        if (selectedItemId != null)
+        {
+            var newSelectedIndex = Items.ToList().FindIndex(item => item.Id == selectedItemId);
+            if (newSelectedIndex >= 0)
+            {
+                SelectedItemIndex = newSelectedIndex;
+            }
         }
     }
 

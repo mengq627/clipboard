@@ -163,16 +163,25 @@
                                     Padding="15,12"
                                     Margin="0,0,0,0">
                                 <VisualStateManager.VisualStateGroups>
-                                    <VisualStateGroup x:Name="SelectionStates">
-                                        <VisualState x:Name="Normal" />
-                                        <VisualState x:Name="Selected">
-                                            <VisualState.Setters>
-                                                <Setter Property="BackgroundColor" Value="#E3F2FD" />
-                                                <Setter Property="Stroke" Value="#2196F3" />
-                                                <Setter Property="StrokeThickness" Value="2" />
-                                            </VisualState.Setters>
-                                        </VisualState>
-                                    </VisualStateGroup>
+                                    <VisualStateGroupList>
+                                        <VisualStateGroup x:Name="SelectionStates">
+                                            <VisualState x:Name="Normal">
+                                                <VisualState.StateTriggers>
+                                                    <StateTrigger IsActive="{Binding IsSelected, Converter={StaticResource InvertedBoolConverter}}" />
+                                                </VisualState.StateTriggers>
+                                            </VisualState>
+                                            <VisualState x:Name="Selected">
+                                                <VisualState.StateTriggers>
+                                                    <StateTrigger IsActive="{Binding IsSelected}" />
+                                                </VisualState.StateTriggers>
+                                                <VisualState.Setters>
+                                                    <Setter Property="BackgroundColor" Value="#E3F2FD" />
+                                                    <Setter Property="Stroke" Value="#2196F3" />
+                                                    <Setter Property="StrokeThickness" Value="2" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                        </VisualStateGroup>
+                                    </VisualStateGroupList>
                                 </VisualStateManager.VisualStateGroups>
                                 <Grid>
                                     <Grid.RowDefinitions>

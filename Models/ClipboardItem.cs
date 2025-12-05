@@ -61,6 +61,16 @@ public class ClipboardItem : INotifyPropertyChanged
         set => SetProperty(ref _contentType, value);
     }
 
+    /// <summary>
+    /// 是否被选中（用于键盘导航的视觉反馈）
+    /// </summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+    private bool _isSelected;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
