@@ -207,7 +207,7 @@ public class WindowsClipboardService : IClipboardService
 
     public async Task CopyToClipboardAsync(ClipboardItem item)
     {
-        await MainThread.InvokeOnMainThreadAsync(() =>
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             try
             {
@@ -219,13 +219,16 @@ public class WindowsClipboardService : IClipboardService
                 }
                 else
                 {
-                    // 文本内容
-                    Clipboard.SetTextAsync(item.Content);
+                    // 文本内容（包括 Excel 复制的制表符分隔文本）
+                    // Clipboard.SetTextAsync 会保留所有字符，包括制表符 (\t) 和换行符 (\r\n)
+                    // 这样粘贴到 Excel/Word 等应用时，表格结构会被正确识别
+                    await Clipboard.SetTextAsync(item.Content);
+                    DebugHelper.DebugWrite($"Text copied to clipboard, length: {item.Content.Length}, contains tabs: {item.Content.Contains('\t')}, contains newlines: {item.Content.Contains('\n')}");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error copying item to clipboard: {ex.Message}");
+                DebugHelper.DebugWrite($"Error copying item to clipboard: {ex.Message}");
             }
         });
     }
