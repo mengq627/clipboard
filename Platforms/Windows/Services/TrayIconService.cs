@@ -3,6 +3,9 @@ using System.Windows.Forms;
 using System.Drawing;
 using Microsoft.Maui.Platform;
 using MauiWindow = Microsoft.Maui.Controls.Window;
+using System.Diagnostics;
+
+using clipboard.Utils;
 
 namespace clipboard.Platforms.Windows.Services;
 
@@ -69,18 +72,106 @@ public class TrayIconService : IDisposable
 
     private void ShowWindow()
     {
-        if (_mainWindow != null)
+        if (_mainWindow == null)
+            return;
+
+        var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+        if (platformWindow == null)
+            return;
+
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
+        // 确保任务栏图标隐藏
+        HideTaskbarIcon(hwnd);
+        // 使用Windows API显示窗口
+        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+        BringWindowToForeground(hwnd, platformWindow);
+    }
+    
+    /// <summary>
+    /// 将窗口带到前台（使用多种技术确保可靠性，即使在全屏应用运行时也能工作）
+    /// </summary>
+    private void BringWindowToForeground(IntPtr hwnd, Microsoft.UI.Xaml.Window platformWindow)
+    {
+        if (hwnd == IntPtr.Zero)
+            return;
+
+        try
         {
-            var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
-            if (platformWindow != null)
+            // 方法1: 先恢复窗口（如果被最小化）
+            Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_RESTORE);
+            
+            // 方法2: 使用 SetWindowPos 将窗口设置为最顶层（临时）
+            // 这样可以绕过 Windows 的前台窗口保护机制
+            Vanara.PInvoke.User32.SetWindowPos(
+                hwnd,
+                Vanara.PInvoke.User32.SpecialWindowHandles.HWND_TOPMOST,
+                0, 0, 0, 0,
+                Vanara.PInvoke.User32.SetWindowPosFlags.SWP_NOMOVE | 
+                Vanara.PInvoke.User32.SetWindowPosFlags.SWP_NOSIZE |
+                Vanara.PInvoke.User32.SetWindowPosFlags.SWP_SHOWWINDOW);
+            
+            // 方法3: 立即将窗口恢复为普通窗口（移除最顶层状态）
+            // 使用 HWND_NOTOPMOST 明确移除最顶层标志，确保窗口可以被其他应用覆盖
+            Vanara.PInvoke.User32.SetWindowPos(
+                hwnd,
+                Vanara.PInvoke.User32.SpecialWindowHandles.HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                Vanara.PInvoke.User32.SetWindowPosFlags.SWP_NOMOVE | 
+                Vanara.PInvoke.User32.SetWindowPosFlags.SWP_NOSIZE);
+            
+            // 方法4: 使用 AttachThreadInput 附加到前台线程
+            // 这是最可靠的方法，可以绕过 Windows 的前台窗口保护
+            var foregroundHwnd = Vanara.PInvoke.User32.GetForegroundWindow();
+            if (foregroundHwnd != IntPtr.Zero && foregroundHwnd != hwnd)
             {
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
-                // 确保任务栏图标隐藏
-                HideTaskbarIcon(hwnd);
-                // 使用Windows API显示窗口
-                Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+                var foregroundThreadId = Vanara.PInvoke.User32.GetWindowThreadProcessId(foregroundHwnd, out _);
+                var currentThreadId = Vanara.PInvoke.Kernel32.GetCurrentThreadId();
+                
+                if (foregroundThreadId != currentThreadId)
+                {
+                    // 附加到前台线程
+                    Vanara.PInvoke.User32.AttachThreadInput(currentThreadId, foregroundThreadId, true);
+                    
+                    // 现在可以安全地设置前台窗口
+                    Vanara.PInvoke.User32.BringWindowToTop(hwnd);
+                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+                    
+                    // 分离线程
+                    Vanara.PInvoke.User32.AttachThreadInput(currentThreadId, foregroundThreadId, false);
+                }
+                else
+                {
+                    // 如果已经在同一线程，直接设置
+                    Vanara.PInvoke.User32.BringWindowToTop(hwnd);
+                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+                }
+            }
+            else
+            {
+                // 如果没有前台窗口，直接设置
+                Vanara.PInvoke.User32.BringWindowToTop(hwnd);
+                Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+            }
+            
+            // 方法5: 激活 WinUI 窗口
+            platformWindow.Activate();
+            
+            // 方法6: 再次确保窗口在最前面（某些情况下需要）
+            Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+        }
+        catch (Exception ex)
+        {
+            DebugHelper.DebugWrite($"Error bringing window to foreground: {ex.Message}");
+            // 如果高级方法失败，尝试基本方法
+            try
+            {
+                Vanara.PInvoke.User32.BringWindowToTop(hwnd);
                 Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
                 platformWindow.Activate();
+            }
+            catch
+            {
+                // 忽略错误，避免影响主程序运行
             }
         }
     }
@@ -104,54 +195,59 @@ public class TrayIconService : IDisposable
     /// </summary>
     public void ToggleWindow()
     {
-        if (_mainWindow != null)
+        DebugHelper.DebugWrite("Toggling window visibility via TrayIconService");
+
+        if (_mainWindow == null)
         {
-            // _mainWindow.Handler = NULL
-            var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
-            if (platformWindow != null)
-            {
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
-                var isVisible = Vanara.PInvoke.User32.IsWindowVisible(hwnd);
+            DebugHelper.DebugWrite("Main window is null, cannot toggle visibility");
+            return;
+        }
+
+        // _mainWindow.Handler = NULL
+        var platformWindow = _mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+
+        if (platformWindow == null)
+        {
+            DebugHelper.DebugWrite("Platform window is null, cannot toggle visibility");
+            return;
+        }
+
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
+        var isVisible = Vanara.PInvoke.User32.IsWindowVisible(hwnd);
                 
-                if (isVisible)
-                {
-                    // 窗口可见，检查是否有焦点
-                    var foregroundHwnd = Vanara.PInvoke.User32.GetForegroundWindow();
-                    var hasFocus = (foregroundHwnd == hwnd);
-                    
-                    if (hasFocus)
-                    {
-                        // 窗口可见且有焦点，隐藏窗口
-                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_HIDE);
-                    }
-                    else
-                    {
-                        // 窗口可见但失去焦点，重新聚焦到窗口
-                        Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
-                        Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
-                        platformWindow.Activate();
-                    }
-                }
-                else
-                {
-                    // 窗口不可见，显示并聚焦
-                    // 先恢复窗口（如果被最小化）
-                    Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_RESTORE);
-                    // 然后显示窗口
-                    Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
-                    // 确保窗口在最前面
-                    Vanara.PInvoke.User32.BringWindowToTop(hwnd);
-                    // 设置窗口为前台窗口
-                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
-                    // 激活 WinUI 窗口
-                    platformWindow.Activate();
-                    
-                    // 再次确保窗口在最前面（某些情况下需要多次调用）
-                    System.Threading.Thread.Sleep(10);
-                    Vanara.PInvoke.User32.BringWindowToTop(hwnd);
-                    Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
-                }
+        if (isVisible)
+        {
+            DebugHelper.DebugWrite("Window is currently visible, checking focus to decide hide/show");
+            // 窗口可见，检查是否有焦点
+            var foregroundHwnd = Vanara.PInvoke.User32.GetForegroundWindow();
+            var hasFocus = (foregroundHwnd == hwnd);
+
+            if (hasFocus)
+            {
+                DebugHelper.DebugWrite("Window has focus, hiding window");
+                // 窗口可见且有焦点，隐藏窗口
+                Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_HIDE);
             }
+            else
+            {
+                DebugHelper.DebugWrite("Window is visible but does not have focus, bringing to front");
+                BringWindowToForeground(hwnd, platformWindow);
+            }
+        }
+        else
+        {
+            DebugHelper.DebugWrite("Window is currently hidden, showing and focusing");
+            // 窗口不可见，显示并聚焦
+            // 先恢复窗口（如果被最小化）
+            Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_RESTORE);
+            // 然后显示窗口
+            Vanara.PInvoke.User32.ShowWindow(hwnd, Vanara.PInvoke.ShowWindowCommand.SW_SHOW);
+            // 确保窗口在最前面
+            Vanara.PInvoke.User32.BringWindowToTop(hwnd);
+            // 设置窗口为前台窗口
+            Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
+            // 激活 WinUI 窗口
+            platformWindow.Activate();
         }
     }
 
