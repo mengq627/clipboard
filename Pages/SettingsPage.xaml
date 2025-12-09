@@ -57,6 +57,29 @@
                 </VerticalStackLayout>
             </Border>
             
+            <!-- 文件日志设置 -->
+            <Border BackgroundColor="White"
+                    StrokeThickness="1"
+                    Stroke="#E0E0E0"
+                    Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="文件日志"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#333"/>
+                    <Label Text="启用后，调试信息将写入到 app.log 文件中（位于应用目录）"
+                           FontSize="12"
+                           TextColor="#666"/>
+                    <HorizontalStackLayout Spacing="10">
+                        <Switch IsToggled="{Binding EnableFileLogging, Mode=TwoWay}"
+                                VerticalOptions="Center"/>
+                        <Label Text="启用文件日志"
+                               FontSize="14"
+                               VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+            
             <!-- 快捷键设置 -->
             <Border BackgroundColor="White"
                     StrokeThickness="1"

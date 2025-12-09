@@ -13,12 +13,14 @@ public class SettingsViewModel : INotifyPropertyChanged
     private bool _useWinKey = true;
     private bool _useAltKey = false;
     private string _hotkeyKey = "V";
+    private bool _enableFileLogging = false;
     
     // 原始设置值（用于比较是否有修改）
     private int _originalMaxItemsPerGroup = 100;
     private bool _originalUseWinKey = true;
     private bool _originalUseAltKey = false;
     private char _originalHotkeyKey = 'V';
+    private bool _originalEnableFileLogging = false;
     
     private bool _isModified = false;
 
@@ -106,6 +108,18 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool EnableFileLogging
+    {
+        get => _enableFileLogging;
+        set
+        {
+            if (SetProperty(ref _enableFileLogging, value))
+            {
+                CheckIfModified();
+            }
+        }
+    }
+
     public ICommand SaveCommand { get; }
     
     public bool IsModified
@@ -131,11 +145,13 @@ public class SettingsViewModel : INotifyPropertyChanged
         _originalUseWinKey = settings.Hotkey.UseWinKey;
         _originalUseAltKey = settings.Hotkey.UseAltKey;
         _originalHotkeyKey = settings.Hotkey.Key;
+        _originalEnableFileLogging = settings.EnableFileLogging;
         
         MaxItemsPerGroup = settings.MaxItemsPerGroup;
         UseWinKey = settings.Hotkey.UseWinKey;
         UseAltKey = settings.Hotkey.UseAltKey;
         HotkeyKey = settings.Hotkey.Key.ToString();
+        EnableFileLogging = settings.EnableFileLogging;
         
         // 加载后重置修改状态
         IsModified = false;
@@ -147,7 +163,8 @@ public class SettingsViewModel : INotifyPropertyChanged
         var hasChanges = _maxItemsPerGroup != _originalMaxItemsPerGroup ||
                         _useWinKey != _originalUseWinKey ||
                         _useAltKey != _originalUseAltKey ||
-                        currentKey != _originalHotkeyKey;
+                        currentKey != _originalHotkeyKey ||
+                        _enableFileLogging != _originalEnableFileLogging;
         
         IsModified = hasChanges;
     }
@@ -164,7 +181,8 @@ public class SettingsViewModel : INotifyPropertyChanged
                     UseWinKey = UseWinKey,
                     UseAltKey = UseAltKey,
                     Key = HotkeyKey.Length > 0 ? HotkeyKey[0] : 'V'
-                }
+                },
+                EnableFileLogging = EnableFileLogging
             };
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -174,6 +192,10 @@ public class SettingsViewModel : INotifyPropertyChanged
             _originalUseWinKey = settings.Hotkey.UseWinKey;
             _originalUseAltKey = settings.Hotkey.UseAltKey;
             _originalHotkeyKey = settings.Hotkey.Key;
+            _originalEnableFileLogging = settings.EnableFileLogging;
+            
+            // 应用文件日志设置
+            Utils.DebugHelper.SetFileLoggingEnabled(settings.EnableFileLogging);
             
             // 重置修改状态（保存按钮会变灰）
             IsModified = false;

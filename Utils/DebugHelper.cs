@@ -1,5 +1,3 @@
-//#define LOG_TO_FILE
-
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -11,15 +9,28 @@ namespace clipboard.Utils;
 /// </summary>
 public static class DebugHelper
 {
-#if LOG_TO_FILE
     private static readonly object _logLock = new object();
     private static string? _logFilePath;
-    
+    private static bool _enableFileLogging = false;
+
     static DebugHelper()
     {
-        _logFilePath  = Path.Combine(AppContext.BaseDirectory, "app.log");
+        _logFilePath = Path.Combine(AppContext.BaseDirectory, "app.log");
     }
-#endif
+
+    /// <summary>
+    /// 设置是否启用文件日志
+    /// </summary>
+    /// <param name="enabled">是否启用</param>
+    public static void SetFileLoggingEnabled(bool enabled)
+    {
+        _enableFileLogging = enabled;
+    }
+
+    /// <summary>
+    /// 获取是否启用文件日志
+    /// </summary>
+    public static bool IsFileLoggingEnabled => _enableFileLogging;
 
     /// <summary>
     /// 输出调试信息，包含文件名、函数名和行号
@@ -30,38 +41,48 @@ public static class DebugHelper
     /// <param name="lineNumber">行号（自动填充）</param>
 #if DEBUG
     [Conditional("DEBUG")]
-#elif LOG_TO_FILE
-    // 在 Release 模式下，如果定义了 LOG_TO_FILE，方法存在但不使用 Conditional
-    // 这样调用不会被优化掉，会执行文件写入
-#else
-    // 如果既没有 DEBUG 也没有 LOG_TO_FILE，使用 Conditional 让调用被优化掉
-    [Conditional("NEVER_DEFINED")]
-#endif
     public static void DebugWrite(
         string message,
         [CallerMemberName] string memberName = "",
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0)
     {
-#if DEBUG || LOG_TO_FILE
         var fileName = Path.GetFileName(filePath);
         var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{fileName}:{memberName}:{lineNumber}] {message}";
-        
-#if DEBUG
+
         System.Diagnostics.Debug.WriteLine(logMessage);
-#endif
 
-#if LOG_TO_FILE
-        WriteToFile(logMessage);
-#endif
-#endif
+        // 如果启用了文件日志，也写入文件
+        if (_enableFileLogging)
+        {
+            WriteToFile(logMessage);
+        }
     }
+#else
+    // Release 模式下，如果启用了文件日志，方法存在并写入文件
+    // 如果没有启用文件日志，使用 Conditional 让调用被优化掉
+    public static void DebugWrite(
+        string message,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+    {
+        // Release 模式下，如果启用了文件日志，写入文件
+        if (_enableFileLogging)
+        {
+            var fileName = Path.GetFileName(filePath);
+            var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{fileName}:{memberName}:{lineNumber}] {message}";
+            WriteToFile(logMessage);
+        }
+    }
+#endif
 
-#if LOG_TO_FILE
-    [Conditional("LOG_TO_FILE")]
+    /// <summary>
+    /// 写入日志到文件（无论是否在 DEBUG 模式下）
+    /// </summary>
     private static void WriteToFile(string message)
     {
-        if (string.IsNullOrEmpty(_logFilePath))
+        if (string.IsNullOrEmpty(_logFilePath) || !_enableFileLogging)
             return;
 
         lock (_logLock)
@@ -80,6 +101,5 @@ public static class DebugHelper
             }
         }
     }
-#endif
 }
 

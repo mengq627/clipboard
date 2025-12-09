@@ -16,6 +16,11 @@ public class AppSettings
     /// 快捷键配置
     /// </summary>
     public HotkeyConfig Hotkey { get; set; } = new();
+    
+    /// <summary>
+    /// 是否启用文件日志
+    /// </summary>
+    public bool EnableFileLogging { get; set; } = false;
 }
 
 /// <summary>

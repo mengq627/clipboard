@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using clipboard.Services;
+using clipboard.Utils;
 #if WINDOWS
 using clipboard.Platforms.Windows.Services;
 using System.Threading;
@@ -13,6 +14,9 @@ namespace clipboard
 
         public static MauiApp CreateMauiApp()
         {
+            // 解析命令行参数（优先于设置）
+            var args = Environment.GetCommandLineArgs();
+            bool enableFileLoggingFromArgs = args.Contains("--log", StringComparer.OrdinalIgnoreCase);
 #if WINDOWS
             // 检查是否已有实例在运行
             const string mutexName = "Global\\ClipboardManager_SingleInstance";
@@ -52,6 +56,12 @@ namespace clipboard
             // 注册服务
             var settingsService = new AppSettingsService();
             builder.Services.AddSingleton<AppSettingsService>(settingsService);
+            
+            // 加载设置并应用文件日志配置
+            // 命令行参数优先于设置
+            var settings = settingsService.GetSettings();
+            bool enableFileLogging = enableFileLoggingFromArgs || settings.EnableFileLogging;
+            DebugHelper.SetFileLoggingEnabled(enableFileLogging);
             
             var clipboardManager = new ClipboardManagerService();
             clipboardManager.SetSettingsService(settingsService);
