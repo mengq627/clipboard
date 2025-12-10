@@ -75,14 +75,15 @@ public class ClipboardViewModel : BindableObject
             {
                 _selectedItemIndex = value;
                 
-                // 同步更新 SelectedItem
+                // 同步更新 SelectedItem（通过属性设置器，确保触发 OnPropertyChanged）
                 if (_selectedItemIndex >= 0 && _selectedItemIndex < Items.Count)
                 {
-                    _selectedItem = Items[_selectedItemIndex];
+                    // 使用属性设置器而不是直接赋值，确保触发 OnPropertyChanged
+                    SelectedItem = Items[_selectedItemIndex];
                 }
                 else
                 {
-                    _selectedItem = null;
+                    SelectedItem = null;
                 }
                 
                 OnPropertyChanged();

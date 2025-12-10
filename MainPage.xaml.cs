@@ -161,7 +161,9 @@ namespace clipboard
             // 只处理 jk 键，让 CollectionView 的默认处理来处理方向键
             if (_itemsCollectionView?.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.ItemsControl itemsControl)
             {
-                // 只订阅 PreviewKeyDown 来处理 jk 键，转换为方向键
+                // 先取消订阅，避免重复订阅导致事件被处理多次
+                itemsControl.PreviewKeyDown -= OnCollectionViewPreviewKeyDown;
+                // 再订阅 PreviewKeyDown 来处理 jk 键，转换为方向键
                 itemsControl.PreviewKeyDown += OnCollectionViewPreviewKeyDown;
                 DebugHelper.DebugWrite("CollectionView keyboard events attached");
             }
@@ -195,6 +197,8 @@ namespace clipboard
             var key = e.Key;
             var originalKey = e.OriginalKey;
             
+            DebugHelper.DebugWrite($"Key pressed: {key}, OriginalKey: {originalKey}");
+            
             // 检查是否是 jk 键
             bool isJ = key == Windows.System.VirtualKey.J || originalKey == Windows.System.VirtualKey.J;
             bool isK = key == Windows.System.VirtualKey.K || originalKey == Windows.System.VirtualKey.K;
@@ -203,44 +207,61 @@ namespace clipboard
             {
                 DebugHelper.DebugWrite($"Converting {(isJ ? "J" : "K")} key to {(isJ ? "Down" : "Up")} arrow key");
                 
-                // 创建一个新的方向键事件
-                var targetKey = isJ ? Windows.System.VirtualKey.Down : Windows.System.VirtualKey.Up;
+                // 标记事件已处理，阻止后续处理
+                e.Handled = true;
                 
-                // 通过模拟方向键事件来触发 CollectionView 的默认导航
-                // 由于我们不能直接创建新的 KeyRoutedEventArgs，我们手动调用导航逻辑
+                // 通过修改 SelectedItem 来触发导航
                 if (BindingContext is ClipboardViewModel viewModel)
                 {
-                    if (isJ && viewModel.SelectedItemIndex < viewModel.Items.Count - 1)
+                    int currentIndex = viewModel.SelectedItemIndex;
+                    DebugHelper.DebugWrite($"Current index: {currentIndex}, Items count: {viewModel.Items.Count}");
+                    
+                    int newIndex = currentIndex;
+                    
+                    if (isJ && currentIndex < viewModel.Items.Count - 1)
                     {
                         // 向下导航
-                        var nextIndex = viewModel.SelectedItemIndex + 1;
-                        if (nextIndex < viewModel.Items.Count)
-                        {
-                            viewModel.SelectedItem = viewModel.Items[nextIndex];
-                            // 滚动到选中项
-                            if (_itemsCollectionView != null)
-                            {
-                                _itemsCollectionView.ScrollTo(viewModel.SelectedItem, position: ScrollToPosition.MakeVisible, animate: true);
-                            }
-                        }
+                        newIndex = currentIndex + 1;
+                        DebugHelper.DebugWrite($"Moving down to index: {newIndex}");
                     }
-                    else if (isK && viewModel.SelectedItemIndex > 0)
+                    else if (isK && currentIndex > 0)
                     {
                         // 向上导航
-                        var prevIndex = viewModel.SelectedItemIndex - 1;
-                        if (prevIndex >= 0)
+                        newIndex = currentIndex - 1;
+                        DebugHelper.DebugWrite($"Moving up to index: {newIndex}");
+                    }
+                    else
+                    {
+                        DebugHelper.DebugWrite($"Cannot move {(isJ ? "down" : "up")}: currentIndex={currentIndex}, count={viewModel.Items.Count}");
+                    }
+                    
+                    // 只有当索引发生变化时才更新
+                    if (newIndex != currentIndex && newIndex >= 0 && newIndex < viewModel.Items.Count)
+                    {
+                        // 直接设置 SelectedItem，这样可以触发 UI 更新
+                        viewModel.SelectedItem = viewModel.Items[newIndex];
+                        DebugHelper.DebugWrite($"SelectedItem updated to index: {newIndex}");
+                        
+                        // 延迟滚动，确保选择已经更新
+                        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(10), () =>
                         {
-                            viewModel.SelectedItem = viewModel.Items[prevIndex];
-                            // 滚动到选中项
-                            if (_itemsCollectionView != null)
+                            if (_itemsCollectionView != null && viewModel.SelectedItem != null)
                             {
                                 _itemsCollectionView.ScrollTo(viewModel.SelectedItem, position: ScrollToPosition.MakeVisible, animate: true);
+                                DebugHelper.DebugWrite($"Scrolled to selected item");
                             }
-                        }
+                        });
+                    }
+                    else
+                    {
+                        DebugHelper.DebugWrite($"Index not changed or invalid: newIndex={newIndex}, currentIndex={currentIndex}");
                     }
                 }
+                else
+                {
+                    DebugHelper.DebugWrite("BindingContext is not ClipboardViewModel");
+                }
                 
-                e.Handled = true; // 阻止 jk 键的默认处理
                 return;
             }
             
