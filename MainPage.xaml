@@ -150,134 +150,134 @@
             </Border>
 
             <!-- 右侧剪贴板项目列表 -->
-            <ScrollView Grid.Column="1">
-                <CollectionView x:Name="ItemsCollectionView"
-                                ItemsSource="{Binding Items}"
-                                EmptyView="暂无剪贴板历史记录"
-                                SelectionMode="Single"
-                                SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="models:ClipboardItem">
-                            <Border x:Name="ItemBorder"
-                                    BackgroundColor="White"
-                                    StrokeThickness="0,0,0,1"
-                                    Stroke="#E0E0E0"
-                                    Padding="15,12"
-                                    Margin="0,0,0,0">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
+            <CollectionView Grid.Column="1"
+                            x:Name="ItemsCollectionView"
+                            ItemsSource="{Binding Items}"
+                            EmptyView="暂无剪贴板历史记录"
+                            SelectionMode="Single"
+                            SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:ClipboardItem">
+                        <Border x:Name="ItemBorder"
+                                BackgroundColor="White"
+                                StrokeThickness="0,0,0,1"
+                                Stroke="#E0E0E0"
+                                Padding="15,12"
+                                Margin="0,0,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                                    <!-- 内容 - 中间偏上 -->
-                                    <!-- 文本内容 -->
-                                    <Label Grid.Row="0"
-                                           Grid.Column="0"
-                                           Grid.ColumnSpan="2"
-                                           Text="{Binding Content}"
-                                           FontSize="14"
-                                           LineBreakMode="WordWrap"
-                                           MaxLines="3"
-                                           TextColor="#333"
+                                <!-- 内容 - 中间偏上 -->
+                                <!-- 文本内容 -->
+                                <Label Grid.Row="0"
+                                       Grid.Column="0"
+                                       Grid.ColumnSpan="2"
+                                       Text="{Binding Content}"
+                                       FontSize="14"
+                                       LineBreakMode="WordWrap"
+                                       MaxLines="3"
+                                       TextColor="#333"
+                                       VerticalOptions="Start"
+                                       Margin="0,5,0,8"
+                                       IsVisible="{Binding ContentType, Converter={StaticResource ContentTypeToVisibilityConverter}, ConverterParameter=Text}"/>
+                                
+                                <!-- 图片内容 -->
+                                <Border Grid.Row="0"
+                                        Grid.Column="0"
+                                        Grid.ColumnSpan="2"
+                                        BackgroundColor="#F5F5F5"
+                                        StrokeThickness="1"
+                                        Stroke="#E0E0E0"
+                                        Padding="5"
+                                        Margin="0,5,0,8"
+                                        IsVisible="{Binding ContentType, Converter={StaticResource ContentTypeToVisibilityConverter}, ConverterParameter=Image}">
+                                    <Image Aspect="AspectFit"
+                                           HeightRequest="120"
+                                           WidthRequest="200"
                                            VerticalOptions="Start"
-                                           Margin="0,5,0,8"
-                                           IsVisible="{Binding ContentType, Converter={StaticResource ContentTypeToVisibilityConverter}, ConverterParameter=Text}"/>
-                                    
-                                    <!-- 图片内容 -->
-                                    <Border Grid.Row="0"
-                                            Grid.Column="0"
-                                            Grid.ColumnSpan="2"
-                                            BackgroundColor="#F5F5F5"
-                                            StrokeThickness="1"
-                                            Stroke="#E0E0E0"
-                                            Padding="5"
-                                            Margin="0,5,0,8"
-                                            IsVisible="{Binding ContentType, Converter={StaticResource ContentTypeToVisibilityConverter}, ConverterParameter=Image}">
-                                        <Image Aspect="AspectFit"
-                                               HeightRequest="120"
-                                               WidthRequest="200"
-                                               VerticalOptions="Start"
-                                               HorizontalOptions="Start">
-                                            <Image.Triggers>
-                                                <DataTrigger TargetType="Image" 
-                                                             Binding="{Binding ContentType}" 
-                                                             Value="Image">
-                                                    <Setter Property="Source" 
-                                                            Value="{Binding Content, Converter={StaticResource Base64ToImageSourceConverter}}" />
-                                                </DataTrigger>
-                                          </Image.Triggers>
-                                      </Image>
+                                           HorizontalOptions="Start">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" 
+                                                         Binding="{Binding ContentType}" 
+                                                         Value="Image">
+                                                <Setter Property="Source" 
+                                                        Value="{Binding Content, Converter={StaticResource Base64ToImageSourceConverter}}" />
+                                            </DataTrigger>
+                                      </Image.Triggers>
+                                  </Image>
+                                </Border>
+
+                                <!-- 时间和操作按钮 - 同一行，偏下 -->
+                                <Label Grid.Row="1"
+                                       Grid.Column="0"
+                                       Text="{Binding LastUsedAt, Converter={StaticResource DateTimeFormatConverter}}"
+                                       FontSize="11"
+                                       TextColor="#999"
+                                       VerticalOptions="Center"
+                                       HorizontalOptions="Start"/>
+
+                                <HorizontalStackLayout Grid.Row="1"
+                                                       Grid.Column="1"
+                                                       Spacing="4"
+                                                       VerticalOptions="Center"
+                                                       HorizontalOptions="End">
+                                    <Border Style="{StaticResource IconButtonBorderStyle}"
+                                            WidthRequest="25"
+                                            HeightRequest="25">
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Source="copy_icon.png"
+                                                     BackgroundColor="Transparent"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=CopyItemCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="复制"/>
                                     </Border>
 
-                                    <!-- 时间和操作按钮 - 同一行，偏下 -->
-                                    <Label Grid.Row="1"
-                                           Grid.Column="0"
-                                           Text="{Binding LastUsedAt, Converter={StaticResource DateTimeFormatConverter}}"
-                                           FontSize="11"
-                                           TextColor="#999"
-                                           VerticalOptions="Center"
-                                           HorizontalOptions="Start"/>
+                                    <Border Style="{Binding IsPinned, Converter={StaticResource BoolToPinBorderStyleConverter}}"
+                                            WidthRequest="25"
+                                            HeightRequest="25">
+                                        <ImageButton Style="{Binding IsPinned, Converter={StaticResource BoolToPinButtonStyleConverter}}"
+                                                     Source="{Binding IsPinned, Converter={StaticResource BoolToPinImageSourceConverter}}"
+                                                     BackgroundColor="Transparent"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=PinItemCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}"/>
+                                    </Border>
 
-                                    <HorizontalStackLayout Grid.Row="1"
-                                                           Grid.Column="1"
-                                                           Spacing="4"
-                                                           VerticalOptions="Center"
-                                                           HorizontalOptions="End">
-                                        <Border Style="{StaticResource IconButtonBorderStyle}"
-                                                WidthRequest="25"
-                                                HeightRequest="25">
-                                            <ImageButton Style="{StaticResource IconButtonStyle}"
-                                                         Source="copy_icon.png"
-                                                         BackgroundColor="Transparent"
-                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=CopyItemCommand}"
-                                                         CommandParameter="{Binding Id}"
-                                                         ToolTipProperties.Text="复制"/>
-                                        </Border>
+                                    <Border Style="{StaticResource IconButtonBorderStyle}"
+                                            WidthRequest="25"
+                                            HeightRequest="25">
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Source="group_icon.png"
+                                                     BackgroundColor="Transparent"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=AddToGroupCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="分组"/>
+                                    </Border>
 
-                                        <Border Style="{Binding IsPinned, Converter={StaticResource BoolToPinBorderStyleConverter}}"
-                                                WidthRequest="25"
-                                                HeightRequest="25">
-                                            <ImageButton Style="{Binding IsPinned, Converter={StaticResource BoolToPinButtonStyleConverter}}"
-                                                         Source="{Binding IsPinned, Converter={StaticResource BoolToPinImageSourceConverter}}"
-                                                         BackgroundColor="Transparent"
-                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=PinItemCommand}"
-                                                         CommandParameter="{Binding Id}"
-                                                         ToolTipProperties.Text="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}"/>
-                                        </Border>
-
-                                        <Border Style="{StaticResource IconButtonBorderStyle}"
-                                                WidthRequest="25"
-                                                HeightRequest="25">
-                                            <ImageButton Style="{StaticResource IconButtonStyle}"
-                                                         Source="group_icon.png"
-                                                         BackgroundColor="Transparent"
-                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=AddToGroupCommand}"
-                                                         CommandParameter="{Binding Id}"
-                                                         ToolTipProperties.Text="分组"/>
-                                        </Border>
-
-                                        <Border Style="{StaticResource IconButtonBorderStyle}"
-                                                WidthRequest="25"
-                                                HeightRequest="25">
-                                            <ImageButton Style="{StaticResource IconButtonStyle}"
-                                                         Source="delete_icon.png"
-                                                         BackgroundColor="Transparent"
-                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteItemCommand}"
-                                                         CommandParameter="{Binding Id}"
-                                                         ToolTipProperties.Text="删除"/>
-                                        </Border>
-                                    </HorizontalStackLayout>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </ScrollView>
+                                    <Border Style="{StaticResource IconButtonBorderStyle}"
+                                            WidthRequest="25"
+                                            HeightRequest="25">
+                                        <ImageButton Style="{StaticResource IconButtonStyle}"
+                                                     Source="delete_icon.png"
+                                                     BackgroundColor="Transparent"
+                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ClipboardViewModel}}, Path=DeleteItemCommand}"
+                                                     CommandParameter="{Binding Id}"
+                                                     ToolTipProperties.Text="删除"/>
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
     </Grid>
 </ContentPage>
+
 
