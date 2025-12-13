@@ -14,6 +14,7 @@ public class SettingsViewModel : INotifyPropertyChanged
     private bool _useAltKey = false;
     private string _hotkeyKey = "V";
     private bool _enableFileLogging = false;
+    private bool _autoPasteAfterCopy = false;
     
     // 原始设置值（用于比较是否有修改）
     private int _originalMaxItemsPerGroup = 100;
@@ -21,6 +22,7 @@ public class SettingsViewModel : INotifyPropertyChanged
     private bool _originalUseAltKey = false;
     private char _originalHotkeyKey = 'V';
     private bool _originalEnableFileLogging = false;
+    private bool _originalAutoPasteAfterCopy = false;
     
     private bool _isModified = false;
 
@@ -120,6 +122,18 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool AutoPasteAfterCopy
+    {
+        get => _autoPasteAfterCopy;
+        set
+        {
+            if (SetProperty(ref _autoPasteAfterCopy, value))
+            {
+                CheckIfModified();
+            }
+        }
+    }
+
     public ICommand SaveCommand { get; }
     
     public bool IsModified
@@ -146,12 +160,14 @@ public class SettingsViewModel : INotifyPropertyChanged
         _originalUseAltKey = settings.Hotkey.UseAltKey;
         _originalHotkeyKey = settings.Hotkey.Key;
         _originalEnableFileLogging = settings.EnableFileLogging;
+        _originalAutoPasteAfterCopy = settings.AutoPasteAfterCopy;
         
         MaxItemsPerGroup = settings.MaxItemsPerGroup;
         UseWinKey = settings.Hotkey.UseWinKey;
         UseAltKey = settings.Hotkey.UseAltKey;
         HotkeyKey = settings.Hotkey.Key.ToString();
         EnableFileLogging = settings.EnableFileLogging;
+        AutoPasteAfterCopy = settings.AutoPasteAfterCopy;
         
         // 加载后重置修改状态
         IsModified = false;
@@ -164,7 +180,8 @@ public class SettingsViewModel : INotifyPropertyChanged
                         _useWinKey != _originalUseWinKey ||
                         _useAltKey != _originalUseAltKey ||
                         currentKey != _originalHotkeyKey ||
-                        _enableFileLogging != _originalEnableFileLogging;
+                        _enableFileLogging != _originalEnableFileLogging ||
+                        _autoPasteAfterCopy != _originalAutoPasteAfterCopy;
         
         IsModified = hasChanges;
     }
@@ -182,7 +199,8 @@ public class SettingsViewModel : INotifyPropertyChanged
                     UseAltKey = UseAltKey,
                     Key = HotkeyKey.Length > 0 ? HotkeyKey[0] : 'V'
                 },
-                EnableFileLogging = EnableFileLogging
+                EnableFileLogging = EnableFileLogging,
+                AutoPasteAfterCopy = AutoPasteAfterCopy
             };
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -193,6 +211,7 @@ public class SettingsViewModel : INotifyPropertyChanged
             _originalUseAltKey = settings.Hotkey.UseAltKey;
             _originalHotkeyKey = settings.Hotkey.Key;
             _originalEnableFileLogging = settings.EnableFileLogging;
+            _originalAutoPasteAfterCopy = settings.AutoPasteAfterCopy;
             
             // 应用文件日志设置
             Utils.DebugHelper.SetFileLoggingEnabled(settings.EnableFileLogging);

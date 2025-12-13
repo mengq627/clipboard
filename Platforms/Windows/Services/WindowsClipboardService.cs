@@ -16,8 +16,29 @@ public class WindowsClipboardService : IClipboardService
     private string _lastClipboardContent = string.Empty;
     private bool _isMonitoring = false;
     private readonly SemaphoreSlim _checkLock = new(1, 1);
+    private AppSettingsService? _settingsService;
+    private PasteService? _pasteService;
+    private Action? _hideWindowCallback;
+    
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     public event EventHandler<ClipboardItem>? ClipboardChanged;
+    
+    public void SetSettingsService(AppSettingsService settingsService)
+    {
+        _settingsService = settingsService;
+    }
+    
+    public void SetPasteService(PasteService pasteService)
+    {
+        _pasteService = pasteService;
+    }
+    
+    public void SetHideWindowCallback(Action hideWindowCallback)
+    {
+        _hideWindowCallback = hideWindowCallback;
+    }
 
     public async Task StartMonitoringAsync()
     {
@@ -224,6 +245,16 @@ public class WindowsClipboardService : IClipboardService
                     // 这样粘贴到 Excel/Word 等应用时，表格结构会被正确识别
                     await Clipboard.SetTextAsync(item.Content);
                     DebugHelper.DebugWrite($"Text copied to clipboard, length: {item.Content.Length}, contains tabs: {item.Content.Contains('\t')}, contains newlines: {item.Content.Contains('\n')}");
+                }
+                
+                if (_settingsService != null && _pasteService != null)
+                {
+                    var settings = _settingsService.GetSettings();
+                    if (settings.AutoPasteAfterCopy)
+                    {
+                        _hideWindowCallback?.Invoke();
+                        _pasteService.SendPaste();
+                    }
                 }
             }
             catch (Exception ex)

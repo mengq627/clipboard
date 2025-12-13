@@ -69,6 +69,10 @@ namespace clipboard
 
 #if WINDOWS
             var windowsService = new WindowsClipboardService();
+            windowsService.SetSettingsService(settingsService);
+            var pasteService = new Platforms.Windows.Services.PasteService();
+            windowsService.SetPasteService(pasteService);
+            builder.Services.AddSingleton<Platforms.Windows.Services.PasteService>(pasteService);
             clipboardManager.SetPlatformService(windowsService);
 #endif
 

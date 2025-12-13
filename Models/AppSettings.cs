@@ -21,6 +21,11 @@ public class AppSettings
     /// 是否启用文件日志
     /// </summary>
     public bool EnableFileLogging { get; set; } = false;
+    
+    /// <summary>
+    /// 复制后是否立即粘贴
+    /// </summary>
+    public bool AutoPasteAfterCopy { get; set; } = false;
 }
 
 /// <summary>

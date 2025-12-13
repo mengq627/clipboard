@@ -41,6 +41,11 @@ public class ClipboardManagerService : IClipboardService
             _platformService.ClipboardChanged += OnPlatformClipboardChanged;
         }
     }
+    
+    public IClipboardService? GetPlatformService()
+    {
+        return _platformService;
+    }
 
     private async void OnPlatformClipboardChanged(object? sender, ClipboardItem item)
     {

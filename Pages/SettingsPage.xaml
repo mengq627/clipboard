@@ -80,6 +80,29 @@
                 </VerticalStackLayout>
             </Border>
             
+            <!-- 自动粘贴设置 -->
+            <Border BackgroundColor="White"
+                    StrokeThickness="1"
+                    Stroke="#E0E0E0"
+                    Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="自动粘贴"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#333"/>
+                    <Label Text="启用后，复制内容到剪贴板后，将自动发送 Shift+Insert 进行粘贴"
+                           FontSize="12"
+                           TextColor="#666"/>
+                    <HorizontalStackLayout Spacing="10">
+                        <Switch IsToggled="{Binding AutoPasteAfterCopy, Mode=TwoWay}"
+                                VerticalOptions="Center"/>
+                        <Label Text="复制后立即粘贴"
+                               FontSize="14"
+                               VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+            
             <!-- 快捷键设置 -->
             <Border BackgroundColor="White"
                     StrokeThickness="1"

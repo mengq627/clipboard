@@ -111,6 +111,17 @@ namespace clipboard
                         );
                     }
                     
+                    // 设置 WindowsClipboardService 的隐藏窗口回调
+                    var clipboardService = Handler?.MauiContext?.Services.GetService<Services.IClipboardService>();
+                    if (clipboardService is Services.ClipboardManagerService clipboardManager)
+                    {
+                        var platformService = clipboardManager.GetPlatformService();
+                        if (platformService is WindowsClipboardService windowsClipboardService)
+                        {
+                            windowsClipboardService.SetHideWindowCallback(() => HideMainWindow());
+                        }
+                    }
+                    
                     // 监听窗口位置变化
                     platformWindow.Activated += (sender, args) =>
                     {
