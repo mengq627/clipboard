@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 
 namespace clipboard.Utils;
 
@@ -39,8 +39,6 @@ public static class DebugHelper
     /// <param name="memberName">调用方法名（自动填充）</param>
     /// <param name="filePath">文件路径（自动填充）</param>
     /// <param name="lineNumber">行号（自动填充）</param>
-#if DEBUG
-    [Conditional("DEBUG")]
     public static void DebugWrite(
         string message,
         [CallerMemberName] string memberName = "",
@@ -58,31 +56,13 @@ public static class DebugHelper
             WriteToFile(logMessage);
         }
     }
-#else
-    // Release 模式下，如果启用了文件日志，方法存在并写入文件
-    // 如果没有启用文件日志，使用 Conditional 让调用被优化掉
-    public static void DebugWrite(
-        string message,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0)
-    {
-        // Release 模式下，如果启用了文件日志，写入文件
-        if (_enableFileLogging)
-        {
-            var fileName = Path.GetFileName(filePath);
-            var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{fileName}:{memberName}:{lineNumber}] {message}";
-            WriteToFile(logMessage);
-        }
-    }
-#endif
 
     /// <summary>
     /// 写入日志到文件（无论是否在 DEBUG 模式下）
     /// </summary>
     private static void WriteToFile(string message)
     {
-        if (string.IsNullOrEmpty(_logFilePath) || !_enableFileLogging)
+        if (string.IsNullOrEmpty(_logFilePath))
             return;
 
         lock (_logLock)
