@@ -5,3 +5,6 @@
 bin/
 obj/
 publish/
+
+# cursor
+.cursor
