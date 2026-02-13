@@ -20,10 +20,12 @@ public class TrayIconService : IDisposable
     {
         _mainWindow = mainWindow;
         
+        // 从当前可执行文件中提取图标句柄
+        Icon appIcon = Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule.FileName);
         // 创建托盘图标
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application, // 可以使用自定义图标
+            Icon = appIcon ?? SystemIcons.Application, // 可以使用自定义图标
             Text = "剪贴板管理器",
             Visible = true
         };
