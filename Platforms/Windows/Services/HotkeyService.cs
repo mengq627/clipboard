@@ -1,9 +1,11 @@
 #if WINDOWS
-using System.Runtime.InteropServices;
-using Microsoft.UI.Xaml;
-using MauiWindow = Microsoft.Maui.Controls.Window;
 using clipboard.Utils;
+using Microsoft.UI.Xaml;
+using Microsoft.Win32;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using WinRT.Interop;
+using MauiWindow = Microsoft.Maui.Controls.Window;
 
 namespace clipboard.Platforms.Windows.Services;
 
@@ -64,7 +66,8 @@ public class HotkeyService : IDisposable
     private IntPtr _windowHandle = IntPtr.Zero;
     private const int WM_HOTKEY = 0x0312;
     private const int HOTKEY_ID = 0x1234; // 热键 ID
-    
+
+    // TODO: 挪到NativeMethods类里
     // RegisterHotKey 相关 API
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -83,7 +86,7 @@ public class HotkeyService : IDisposable
     private IntPtr _originalWndProc = IntPtr.Zero;
     
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-    
+
     [DllImport("user32.dll")]
     private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
     
@@ -92,15 +95,45 @@ public class HotkeyService : IDisposable
     
     [DllImport("user32.dll")]
     private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-    
+
+    [DllImport("Comctl32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern bool SetWindowSubclass(IntPtr hWnd, SUBCLASSPROC pfnSubclass, uint uIdSubclass, IntPtr dwRefData);
+
+    [DllImport("Comctl32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
+    public delegate IntPtr SUBCLASSPROC(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, uint uIdSubclass, IntPtr dwRefData);
+
     private const int GWLP_WNDPROC = -4;
-    
+
+    // 必须保持对委托的引用，否则会被 GC 回收导致程序崩溃
+    private SUBCLASSPROC _subclassDelegate;
+
     public void Initialize(MauiWindow mainWindow, TrayIconService trayIconService)
     {
+        // 入口函数
         _trayIconService = trayIconService;
-        
-        // 安装低级键盘 Hook
-        InstallKeyboardHook();
+
+        // 先尝试注册热键，失败后安装低级键盘 Hook
+        // 获取原生 WinUI 3 窗口对象
+        var nativeWindow = mainWindow.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+
+        if (nativeWindow == null)
+        {
+            return;
+        }
+        int res = RegisterWinV(nativeWindow);
+        if (res < 0)
+        {
+            RestartExplorer();
+
+            res = RegisterWinV(nativeWindow);
+            if (res < 0)
+            {
+                InstallKeyboardHook();
+            }
+            
+        }
     }
     
     /// <summary>
@@ -127,16 +160,7 @@ public class HotkeyService : IDisposable
             return;
         }
         
-        // RegisterHotKey 不支持 Win 键，如果用户选择 Win 键，应该使用 LowLevelKeyboardHook
-        if (_useWinKey)
-        {
-            DebugHelper.DebugWrite("RegisterHotKey does not support Win key (reserved by system), falling back to LowLevelKeyboardHook");
-            // 回退到 LowLevelKeyboardHook
-            InstallKeyboardHook();
-            return;
-        }
-        
-        if (!_useAltKey)
+        if (!_useAltKey && !_useWinKey)
         {
             DebugHelper.DebugWrite("No modifier key selected, cannot register hotkey");
             return;
@@ -386,7 +410,189 @@ public class HotkeyService : IDisposable
             System.Diagnostics.Debug.WriteLine("Keyboard hook uninstalled");
         }
     }
-    
+
+
+    // 检查系统剪贴板历史是否开启
+    public static bool IsSystemClipboardHistoryEnabled()
+    {
+        try
+        {
+            using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Clipboard"))
+            {
+                if (key != null)
+                {
+                    var val = key.GetValue("EnableClipboardHistory");
+                    // 1 = 开启, 0 = 关闭
+                    if (val is int i && i == 1)
+                    {
+                        DebugHelper.DebugWrite("系统剪贴板历史功能已开启");
+                        return true;
+                    }
+                }
+            }
+        }
+        catch { /* 处理权限异常 */ }
+        DebugHelper.DebugWrite("系统剪贴板历史功能未开启");
+        return false;
+    }
+
+    // 禁用系统剪贴板历史（为了让我们能接管 Win+V）
+    public static void DisableSystemClipboardHistory()
+    {
+        try
+        {
+            // --- 1. 禁用剪贴板历史记录功能 (防止系统收集剪贴板数据) ---
+            string clipboardPath = @"Software\Microsoft\Clipboard";
+            using (var clipboardKey = Registry.CurrentUser.OpenSubKey(clipboardPath, true))
+            {
+                // 如果路径不存在，CreateSubKey 会创建它
+                var targetKey = clipboardKey ?? Registry.CurrentUser.CreateSubKey(clipboardPath);
+                targetKey.SetValue("EnableClipboardHistory", 0, RegistryValueKind.DWord);
+                DebugHelper.DebugWrite("已禁用系统剪贴板历史记录数据功能。");
+            }
+
+            // --- 2. 释放 Win+V 热键占用 (DisabledHotkeys) ---
+            string explorerAdvancedPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+            using (var advKey = Registry.CurrentUser.OpenSubKey(explorerAdvancedPath, true))
+            {
+                if (advKey != null)
+                {
+                    // 读取现有的禁用列表
+                    object existingValue = advKey.GetValue("DisabledHotkeys");
+                    string currentDisabledKeys = existingValue?.ToString() ?? "";
+
+                    // 如果 'V' 还没在禁用列表中，则添加它
+                    if (!currentDisabledKeys.Contains("V", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string newValue = currentDisabledKeys + "V";
+                        advKey.SetValue("DisabledHotkeys", newValue, RegistryValueKind.String);
+                        DebugHelper.DebugWrite($"已将 'V' 添加到 DisabledHotkeys。当前值: {newValue}");
+                    }
+                    else
+                    {
+                        DebugHelper.DebugWrite("'V' 已经存在于 DisabledHotkeys 列表中，无需重复添加。");
+                    }
+                }
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            DebugHelper.DebugWrite("无法修改注册表：权限不足。请尝试以管理员身份运行程序。");
+        }
+        catch (Exception ex)
+        {
+            DebugHelper.DebugWrite($"修改注册表时发生异常: {ex.Message}");
+        }
+    }
+
+    public static void RestartExplorer()
+    {
+        try
+        {
+            // 1. 终止所有名为 explorer 的进程
+            // 注意：Kill() 之后 Windows 默认会自动尝试重启一个，
+            // 但为了保险和即时性，我们会手动再启动一个。
+            var explorers = Process.GetProcessesByName("explorer");
+            foreach (var p in explorers)
+            {
+                try
+                {
+                    p.Kill();
+                    p.WaitForExit(3000); // 等待最多3秒让它退出
+                }
+                catch { /* 忽略单个进程操作异常 */ }
+            }
+
+            // 2. 重新启动资源管理器
+            // 显式指定路径以确保安全
+            string explorerPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = explorerPath,
+                UseShellExecute = true
+            });
+
+            DebugHelper.DebugWrite("资源管理器已尝试重启。");
+        }
+        catch (Exception ex)
+        {
+            DebugHelper.DebugWrite($"重启资源管理器时发生错误: {ex.Message}");
+        }
+    }
+
+    private IntPtr _hwnd;
+    //private const int HOTKEY_ID = 9000; // 唯一的 ID
+
+    private int RegisterWinV(Microsoft.UI.Xaml.Window window)
+    {
+        // 1. 获取窗口句柄 (MAUI 9 / WinUI 3 获取句柄的方式)
+        _hwnd = WindowNative.GetWindowHandle(window);
+
+        // 2. 先尝试禁用系统的剪贴板历史（核心步骤！）
+        // 如果你不做这一步，下面的 RegisterHotKey 很大概率会返回 false
+        if (IsSystemClipboardHistoryEnabled())
+        {
+            // 实际上这里应该弹窗询问用户是否允许接管
+            DisableSystemClipboardHistory();
+        }
+
+        // 3. 注册快捷键 Win + V
+        // MOD_WIN = 0x0008, VK_V = 0x56
+        bool success = RegisterHotKey(_hwnd, HOTKEY_ID, MOD_WIN, VK_V);
+
+        if (!success)
+        {
+            DebugHelper.DebugWrite("注册 Win+V 失败！可能被系统或其他软件占用了。");
+            return -1;
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine("Win+V 注册成功！");
+
+            // 4. 挂钩消息循环处理
+            // 在 WinUI 3 中，直接挂钩 WndProc 比较麻烦，
+            // 通常建议使用名为 PInvoke.User32 的库或者创建一个不可见的 NativeWindow 来接收消息
+            // 这里为了演示逻辑，假设你有一个处理消息的方法
+            InitializeMessageHandling();
+            return 0;
+        }
+    }
+
+    private void InitializeMessageHandling()
+    {
+        // 创建委托并挂钩
+        _subclassDelegate = new SUBCLASSPROC(OnWndProc);
+
+        // 100 是子类 ID，可以随便写一个
+        SetWindowSubclass(_hwnd, _subclassDelegate, 100, IntPtr.Zero);
+    }
+
+    private IntPtr OnWndProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, uint uIdSubclass, IntPtr dwRefData)
+    {
+        if (uMsg == WM_HOTKEY)
+        {
+            int id = wParam.ToInt32();
+            if (id == HOTKEY_ID)
+            {
+                DebugHelper.DebugWrite("Hotkey Win+V 被触发 via RegisterHotKey");
+
+                // 模仿你 LowLevel 钩子里的逻辑
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    _trayIconService?.ToggleWindow();
+                });
+
+                return IntPtr.Zero; // 消息已处理
+            }
+        }
+
+        // 传递给原始窗口过程
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    // 注意：WinUI 3 并没有直接暴露 AddHook 像 WPF 那样。
+    // 你可能需要使用 subclassing 或者创建一个隐藏的 Win32 窗口来接收 WM_HOTKEY 消息
+
     public void Dispose()
     {
         // 卸载 LowLevelKeyboardHook
