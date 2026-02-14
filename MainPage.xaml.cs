@@ -1,6 +1,7 @@
 ﻿using clipboard.Models;
 using clipboard.Services;
 using clipboard.ViewModels;
+using System.Collections;
 #if WINDOWS
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
@@ -33,6 +34,19 @@ namespace clipboard
             
             // 在 Loaded 事件中初始化 CollectionView 的键盘事件处理
             Loaded += OnPageLoaded;
+        }
+
+        public void FocusCollectionView()
+        {
+            // 确保在主线程执行
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                itemscollectionview.Focus();
+                
+                // 如果你希望默认选中第一条，可以取消下面注释
+                if (itemscollectionview.ItemsSource is IList list && list.Count > 0)
+                   itemscollectionview.SelectedItem = list[0];
+            });
         }
         
         private void OnPageLoaded(object? sender, EventArgs e)
@@ -306,3 +320,4 @@ namespace clipboard
         }
     }
 }
+
