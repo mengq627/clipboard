@@ -250,6 +250,14 @@ public class TrayIconService : IDisposable
             Vanara.PInvoke.User32.SetForegroundWindow(hwnd);
             // 激活 WinUI 窗口
             platformWindow.Activate();
+
+            // 获取 Shell 当前展示的具体页面
+            var currentPage = Shell.Current?.CurrentPage;
+        
+            if (currentPage is MainPage mainPage)
+            {
+                mainPage.FocusCollectionView();
+            }
         }
     }
 
@@ -334,4 +342,5 @@ public class TrayIconService : IDisposable
     }
 }
 #endif
+
 
