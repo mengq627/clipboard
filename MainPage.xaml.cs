@@ -41,11 +41,11 @@ namespace clipboard
             // 确保在主线程执行
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                itemscollectionview.Focus();
+                ItemsCollectionView.Focus();
                 
                 // 如果你希望默认选中第一条，可以取消下面注释
-                if (itemscollectionview.ItemsSource is IList list && list.Count > 0)
-                   itemscollectionview.SelectedItem = list[0];
+                if (ItemsCollectionView.ItemsSource is IList list && list.Count > 0)
+                   ItemsCollectionView.SelectedItem = list[0];
             });
         }
         
@@ -320,4 +320,5 @@ namespace clipboard
         }
     }
 }
+
 
