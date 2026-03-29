@@ -260,7 +260,10 @@ public class ClipboardViewModel : BindableObject
             Items.Add(item);
             System.Diagnostics.Debug.WriteLine($"Added item {item.Id}: IsPinned={item.IsPinned}");
         }
-        
+
+        // 这里可能会导致复制内容时，应用突然从后台变为前台，影响体验。
+        // 当前已经有置顶功能了，这个功能暂时不需要，先注释掉。
+        return;
         // 如果之前有选中项，尝试在新列表中恢复选中状态
         if (selectedItemId != null)
         {
