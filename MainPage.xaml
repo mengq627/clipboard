@@ -16,7 +16,7 @@
             <!-- 左侧分组列表 -->
             <Border Grid.Column="0"
                     BackgroundColor="#F5F5F5"
-                    StrokeThickness="0,0,1,0"
+                    StrokeThickness="1"
                     Stroke="#E0E0E0">
                 <Grid RowDefinitions="Auto,*">
                     <!-- 设置按钮 -->
@@ -86,13 +86,13 @@
                                         Stroke="#E0E0E0"
                                         Padding="10,8"
                                         Margin="0,0,0,5">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnAllGroupTapped"/>
+                                    </Border.GestureRecognizers>
                                     <Grid>
                                         <Label Text="全部"
                                                FontSize="16"
                                                VerticalOptions="Center"/>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnAllGroupTapped"/>
-                                        </Border.GestureRecognizers>
                                     </Grid>
                                 </Border>
                             </CollectionView.Header>
@@ -103,6 +103,9 @@
                                             Stroke="#E0E0E0"
                                             Padding="10,8"
                                             Margin="0,0,0,5">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnGroupTapped" CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -115,10 +118,6 @@
                                                    FontSize="16"
                                                    VerticalOptions="Center"/>
 
-                                            <Border.GestureRecognizers>
-                                                <TapGestureRecognizer Tapped="OnGroupTapped" CommandParameter="{Binding .}"/>
-                                            </Border.GestureRecognizers>
-                                            
                                             <Label Grid.Column="1"
                                                    Text="{Binding ItemCount}"
                                                    FontSize="12"
@@ -160,7 +159,7 @@
                     <DataTemplate x:DataType="models:ClipboardItem">
                         <Border x:Name="ItemBorder"
                                 BackgroundColor="White"
-                                StrokeThickness="0,0,0,1"
+                                StrokeThickness="1"
                                 Stroke="#E0E0E0"
                                 Padding="15,12"
                                 Margin="0,0,0,0">
