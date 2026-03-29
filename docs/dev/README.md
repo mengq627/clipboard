@@ -254,6 +254,11 @@ Windows特定的功能在 `Platforms/Windows/` 目录下：
 
 这些目录已在 `.gitignore` 中忽略。
 
+## debug
+
+应用内可以开启日志打印，在二进制同级目录下的 app.log 中。
+powershell 中使用 `Get-Content -Wait -Tail 10 "app.log"` 实时查看日志。
+
 ## 注意事项
 
 1. **线程安全**: 剪贴板监控在后台线程运行，UI更新需要使用 `MainThread.BeginInvokeOnMainThread()`
