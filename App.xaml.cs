@@ -42,7 +42,8 @@ namespace clipboard
         private const int SC_MINIMIZE = 0xF020;
         private const uint WM_ACTIVATE = 0x0006;
         private const int WA_INACTIVE = 0;
-        
+        private const int SC_CLOSE = 0xF060;
+
         private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
         
         [DllImport("user32.dll")]
@@ -228,7 +229,8 @@ namespace clipboard
         private IntPtr CustomWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
         {
             // 拦截最小化命令 和 失焦 消息
-            if ((msg == WM_SYSCOMMAND && wParam.ToInt32() == SC_MINIMIZE) || (msg == WM_ACTIVATE && wParam.ToInt32() == WA_INACTIVE))
+            if ((msg == WM_SYSCOMMAND && (wParam.ToInt32() == SC_MINIMIZE) || wParam.ToInt32() == SC_CLOSE) || 
+                (msg == WM_ACTIVATE && wParam.ToInt32() == WA_INACTIVE))
             {
                 // 保存窗口位置
                 if (_platformWindowForMinimize != null && _windowPositionService != null)
